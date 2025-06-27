@@ -1,0 +1,42 @@
+mcpServers:
+  google-jules-mcp:
+    command: node
+    args:
+      - dist/index.js
+    env:
+      HEADLESS: "true"
+      TIMEOUT: "30000"
+      DEBUG: "false"
+    schema:
+      type: object
+      properties:
+        HEADLESS:
+          type: string
+          enum: ["true", "false"]
+          default: "true"
+          description: "Run browser in headless mode"
+        TIMEOUT:
+          type: string
+          default: "30000"
+          description: "Browser operation timeout in milliseconds"
+        DEBUG:
+          type: string
+          enum: ["true", "false"]
+          default: "false"
+          description: "Enable debug logging and screenshots"
+        JULES_DATA_PATH:
+          type: string
+          description: "Custom path for Jules task data storage"
+      required: []
+    description: "MCP server for Google Jules automation - create tasks, manage code reviews, automate repository workflows"
+    homepage: "https://github.com/samihalawa/google-jules-mcp"
+    license: "MIT"
+    keywords:
+      - jules
+      - google
+      - automation
+      - github
+      - code-review
+      - ai-assistant
+      - mcp
+      - modelcontextprotocol
