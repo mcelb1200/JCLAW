@@ -317,6 +317,38 @@ class GoogleJulesMCP {
               properties: {},
             },
           },
+          {
+            name: 'jules_setup_wizard',
+            description: 'Interactive session setup wizard for automated Google authentication configuration',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                environment: {
+                  type: 'string',
+                  enum: ['local', 'cloud', 'smithery', 'auto-detect'],
+                  description: 'Deployment environment (auto-detect will analyze current setup)',
+                },
+                preferences: {
+                  type: 'object',
+                  properties: {
+                    priority: {
+                      type: 'string',
+                      enum: ['ease-of-use', 'reliability', 'portability', 'performance'],
+                      description: 'User priority for session management'
+                    },
+                    hasChrome: {
+                      type: 'boolean',
+                      description: 'Whether user has local Chrome browser access'
+                    },
+                    cloudDeployment: {
+                      type: 'boolean', 
+                      description: 'Whether deploying to cloud platforms'
+                    }
+                  }
+                }
+              },
+            },
+          },
         ],
       };
     });
@@ -350,6 +382,8 @@ class GoogleJulesMCP {
             return await this.setCookies(args);
           case 'jules_session_info':
             return await this.getSessionInfo(args);
+          case 'jules_setup_wizard':
+            return await this.setupWizard(args);
           default:
             throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
         }
@@ -381,6 +415,36 @@ class GoogleJulesMCP {
             name: 'Common Task Templates',
             description: 'Template examples for common development tasks',
             mimeType: 'application/json'
+          },
+          {
+            uri: 'jules://prompts/session-setup',
+            name: 'Session Setup Automation',
+            description: 'Step-by-step prompts for automated Google authentication setup',
+            mimeType: 'text/plain'
+          },
+          {
+            uri: 'jules://prompts/cookie-extraction',
+            name: 'Cookie Extraction Guide',
+            description: 'Automated prompts for extracting Google authentication cookies',
+            mimeType: 'text/plain'
+          },
+          {
+            uri: 'jules://prompts/browserbase-setup',
+            name: 'Browserbase Configuration',
+            description: 'Automated Browserbase setup for remote browser sessions',
+            mimeType: 'text/plain'
+          },
+          {
+            uri: 'jules://guides/session-modes',
+            name: 'Session Mode Selection Guide',
+            description: 'Intelligent guide for choosing the optimal session management mode',
+            mimeType: 'text/plain'
+          },
+          {
+            uri: 'jules://troubleshooting/authentication',
+            name: 'Authentication Troubleshooting',
+            description: 'Automated diagnostics and fixes for authentication issues',
+            mimeType: 'text/plain'
           },
         ]
       };
@@ -434,6 +498,461 @@ class GoogleJulesMCP {
                 'security-fix': 'Fix security vulnerability in [location]: [description of vulnerability].',
                 'performance': 'Optimize [component/function] performance by [specific optimization approach].'
               }, null, 2)
+            }]
+          };
+        case 'jules://prompts/session-setup':
+          return {
+            contents: [{
+              uri,
+              mimeType: 'text/plain',
+              text: `# Jules MCP Session Setup Automation
+
+## Agent Instructions for Automated Google Authentication Setup
+
+You are helping a user configure Google Jules MCP with persistent authentication. Follow these steps systematically:
+
+### STEP 1: Determine User's Environment
+Ask the user about their deployment environment:
+- "Are you deploying locally or on a cloud platform like Smithery?"
+- "Do you have access to your local Chrome browser?"
+- "Are you planning to use this MCP from multiple locations?"
+
+### STEP 2: Recommend Optimal Session Mode
+Based on their answers, recommend:
+
+**For Cloud/Remote Deployment (Smithery):**
+- Recommend: "SESSION_MODE=browserbase"
+- Explain: "This uses remote browsers and works perfectly for cloud deployments"
+- Next: Proceed to Browserbase setup
+
+**For Local Development:**
+- Recommend: "SESSION_MODE=chrome-profile" 
+- Explain: "This uses your existing Chrome login"
+- Next: Help find Chrome profile path
+
+**For Manual Cookie Management:**
+- Recommend: "SESSION_MODE=cookies"
+- Explain: "This saves authentication cookies as text"
+- Next: Proceed to cookie extraction
+
+### STEP 3: Execute Setup Based on Mode
+
+If BROWSERBASE:
+1. Read jules://prompts/browserbase-setup for detailed instructions
+2. Help configure API keys and project settings
+3. Test connection
+
+If CHROME-PROFILE:
+1. Read jules://guides/session-modes for profile detection
+2. Help locate Chrome user data directory
+3. Configure environment variables
+
+If COOKIES:
+1. Read jules://prompts/cookie-extraction for step-by-step extraction
+2. Help format cookies for environment variables
+3. Test authentication
+
+### STEP 4: Validate Setup
+Always end by:
+1. Using jules_session_info to check configuration
+2. Testing with a simple jules_create_task call
+3. Confirming Google authentication works
+
+### AUTOMATION COMMANDS TO USE:
+- \`jules_session_info\` - Check current configuration
+- \`jules_get_cookies\` - Extract authentication cookies  
+- \`jules_set_cookies\` - Test cookie authentication
+- \`jules_screenshot\` - Debug authentication issues
+
+Remember: Be proactive and guide the user through each step. Don't just provide information - actively help configure and test the setup.`
+            }]
+          };
+        case 'jules://prompts/cookie-extraction':
+          return {
+            contents: [{
+              uri,
+              mimeType: 'text/plain',
+              text: `# Automated Google Authentication Cookie Extraction
+
+## Agent Instructions for Cookie-Based Authentication
+
+You are helping extract Google authentication cookies for Jules MCP. Follow this exact process:
+
+### STEP 1: Guide User to Login
+Instruct the user:
+1. "Open Chrome and navigate to https://jules.google.com"
+2. "Make sure you are fully logged in and can access Jules"
+3. "Complete any 2FA or verification if prompted"
+
+### STEP 2: Extract Cookies via Developer Tools
+Guide them step-by-step:
+
+1. **Open Developer Tools:**
+   - "Press F12 (or Cmd+Option+I on Mac)"
+   - "Click on the 'Application' tab (or 'Storage' in Firefox)"
+
+2. **Navigate to Cookies:**
+   - "In the left sidebar, find 'Cookies'"
+   - "Click to expand the cookies section"
+   - "Click on 'https://jules.google.com'"
+
+3. **Identify Key Cookies:**
+   Look for these important authentication cookies:
+   - \`session_id\`, \`sessionid\`, or similar
+   - \`auth_token\`, \`authuser\`, or similar  
+   - \`SID\`, \`HSID\`, \`SSID\` (Google-specific)
+   - \`SAPISID\`, \`APISID\` (API authentication)
+   - Any cookie with 'auth' or 'session' in the name
+
+### STEP 3: Format Cookies for Environment Variable
+Help format as: \`name=value; domain=.google.com; name2=value2; domain=.google.com\`
+
+Example:
+\`\`\`
+GOOGLE_AUTH_COOKIES="sessionid=abc123def456; domain=.google.com; auth_token=xyz789; domain=.google.com; SID=A1B2C3; domain=.google.com"
+\`\`\`
+
+### STEP 4: Alternative - Use MCP Tools
+If the user has the MCP running with basic access:
+1. Use \`jules_get_cookies\` to extract current session
+2. Save the output for environment configuration
+3. Use \`jules_set_cookies\` to test the extracted cookies
+
+### STEP 5: Test Configuration
+1. Set the environment variable
+2. Restart the MCP with SESSION_MODE=cookies
+3. Use \`jules_session_info\` to verify configuration
+4. Test with a simple task creation
+
+### TROUBLESHOOTING:
+- If authentication fails, re-extract cookies (they expire)
+- Make sure to include the domain information
+- Check that Jules is accessible in a normal browser first
+
+### AUTOMATION APPROACH:
+If possible, automate this by:
+1. Taking a screenshot of the current Jules page
+2. Using jules_get_cookies if browser access is available  
+3. Providing formatted output ready for environment variables`
+            }]
+          };
+        case 'jules://prompts/browserbase-setup':
+          return {
+            contents: [{
+              uri,
+              mimeType: 'text/plain',
+              text: `# Automated Browserbase Setup for Remote Jules MCP
+
+## Agent Instructions for Browserbase Configuration
+
+You are setting up Browserbase for cloud-based Google Jules automation. This is perfect for Smithery deployments.
+
+### STEP 1: Explain Browserbase Benefits
+Tell the user:
+- "Browserbase provides remote browsers in the cloud"
+- "Perfect for Smithery deployments - no local browser needed"
+- "Maintains persistent Google sessions across deployments"
+- "Works from anywhere with internet connection"
+
+### STEP 2: Use Provided Credentials (If Available)
+We have test credentials available:
+\`\`\`
+BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds
+BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb
+\`\`\`
+
+### STEP 3: Configure Environment Variables
+Help set up these variables:
+
+**For Smithery Deployment:**
+1. In Smithery settings, add:
+   - \`SESSION_MODE=browserbase\`
+   - \`BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds\`
+   - \`BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb\`
+
+**For Local Testing:**
+1. Set environment variables:
+   \`\`\`bash
+   export SESSION_MODE=browserbase
+   export BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds
+   export BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb
+   \`\`\`
+
+### STEP 4: Test Browserbase Connection
+1. Use \`jules_session_info\` to verify Browserbase configuration
+2. The output should show:
+   - \`sessionMode: "browserbase"\`
+   - \`hasBrowserbaseConfig: true\`
+   - \`browserbaseSessionId: null\` (will be created automatically)
+
+### STEP 5: First-Time Authentication Setup
+When you first use Browserbase:
+1. The MCP will create a new browser session in the cloud
+2. You'll need to authenticate with Google in that remote browser
+3. To do this systematically:
+   - Use \`jules_screenshot\` to see the current browser state
+   - If authentication is needed, the screenshot will show login prompts
+   - Guide the user through cloud-based authentication
+
+### STEP 6: Session Persistence
+Once authenticated:
+- Browserbase will maintain the session
+- Future MCP calls will use the authenticated session
+- No need to re-authenticate unless session expires
+
+### AUTOMATION COMMANDS:
+- \`jules_session_info\` - Check Browserbase configuration
+- \`jules_screenshot\` - See remote browser state
+- \`jules_create_task\` - Test end-to-end functionality
+
+### TROUBLESHOOTING:
+- If connection fails, verify API key and project ID
+- If authentication issues, take screenshots to debug
+- Sessions may need periodic refresh
+
+### SMITHERY DEPLOYMENT:
+For Smithery users:
+1. Fork the google-jules-mcp repository
+2. Deploy to Smithery with Browserbase environment variables
+3. The MCP will automatically handle remote browser management
+4. Access from any Claude Code instance globally
+
+This approach completely eliminates local browser dependency!`
+            }]
+          };
+        case 'jules://guides/session-modes':
+          return {
+            contents: [{
+              uri,
+              mimeType: 'text/plain',
+              text: `# Intelligent Session Mode Selection Guide
+
+## Agent Decision Tree for Optimal Session Configuration
+
+Use this guide to automatically determine the best session mode for each user:
+
+### DECISION MATRIX:
+
+**User Says: "I want to deploy on Smithery/cloud"**
+→ **RECOMMEND: browserbase**
+→ REASON: Remote browsers, no local dependencies
+→ NEXT: Read jules://prompts/browserbase-setup
+
+**User Says: "I'm developing locally" + "I use Chrome for Google services"**
+→ **RECOMMEND: chrome-profile** 
+→ REASON: Leverage existing Google authentication
+→ NEXT: Detect Chrome profile path
+
+**User Says: "I need this to work on multiple machines"**
+→ **RECOMMEND: cookies**
+→ REASON: Portable authentication via environment variables
+→ NEXT: Read jules://prompts/cookie-extraction
+
+**User Says: "I want maximum reliability and control"**
+→ **RECOMMEND: persistent**
+→ REASON: Local browser data persistence, full control
+→ NEXT: Configure persistent directory
+
+**User Says: "I just want to test quickly"**
+→ **RECOMMEND: fresh**
+→ REASON: No setup required, clean testing environment
+→ NEXT: Explain manual authentication per session
+
+### CHROME PROFILE DETECTION:
+
+For \`chrome-profile\` mode, help find the user data directory:
+
+**macOS:**
+\`/Users/[username]/Library/Application Support/Google/Chrome/Default\`
+
+**Windows:**
+\`C:\\Users\\[username]\\AppData\\Local\\Google\\Chrome\\User Data\\Default\`
+
+**Linux:**
+\`/home/[username]/.config/google-chrome/Default\`
+
+### AUTOMATION SCRIPTS:
+
+**Detect Chrome Profile (macOS/Linux):**
+\`\`\`bash
+find ~/Library/Application\\ Support/Google/Chrome -name "Default" -type d 2>/dev/null
+find ~/.config/google-chrome -name "Default" -type d 2>/dev/null
+\`\`\`
+
+**Test Profile Access:**
+Check if profile directory exists and contains "Preferences" file
+
+### ENVIRONMENT VARIABLE TEMPLATES:
+
+**Browserbase:**
+\`\`\`
+SESSION_MODE=browserbase
+BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds
+BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb
+\`\`\`
+
+**Chrome Profile:**
+\`\`\`
+SESSION_MODE=chrome-profile
+CHROME_USER_DATA_DIR=/path/to/chrome/profile
+\`\`\`
+
+**Cookies:**
+\`\`\`
+SESSION_MODE=cookies
+GOOGLE_AUTH_COOKIES="session_id=...; domain=.google.com"
+COOKIES_PATH=~/.jules-mcp/cookies.json
+\`\`\`
+
+**Persistent:**
+\`\`\`
+SESSION_MODE=persistent
+CHROME_USER_DATA_DIR=~/.jules-mcp/browser-data
+\`\`\`
+
+### VALIDATION CHECKLIST:
+After configuration, always verify:
+1. ✅ \`jules_session_info\` shows correct mode
+2. ✅ \`hasBrowserbaseConfig\` or \`hasUserDataDir\` as appropriate
+3. ✅ Test task creation works without authentication prompts
+
+### USER EXPERIENCE OPTIMIZATION:
+- Ask contextual questions to understand their workflow
+- Provide specific commands they can copy-paste
+- Test configuration immediately after setup
+- Offer fallback options if primary choice fails`
+            }]
+          };
+        case 'jules://troubleshooting/authentication':
+          return {
+            contents: [{
+              uri,
+              mimeType: 'text/plain',
+              text: `# Automated Authentication Troubleshooting
+
+## Agent Diagnostic and Repair Instructions
+
+When users report authentication issues, follow this systematic troubleshooting process:
+
+### STEP 1: Gather Diagnostic Information
+Run these commands to assess the situation:
+
+1. **Check Session Configuration:**
+   \`jules_session_info\`
+   
+   Look for:
+   - \`sessionMode\`: Current mode
+   - \`browserConnected\`: Should be true
+   - \`pageReady\`: Should be true
+   - Configuration flags for chosen mode
+
+2. **Take Screenshot:**
+   \`jules_screenshot\`
+   
+   This shows what the browser actually sees
+
+### STEP 2: Common Issue Patterns
+
+**Pattern: "Browser not connected"**
+- Symptom: \`browserConnected: false\`
+- Cause: Browser launch failure
+- Fix: Check environment variables, restart MCP
+
+**Pattern: "Authentication required"**
+- Symptom: Screenshot shows Google login page
+- Cause: Session expired or not configured
+- Fix: Re-authenticate or refresh session
+
+**Pattern: "Permission denied"**
+- Symptom: Access denied errors in task creation
+- Cause: Insufficient Google account permissions
+- Fix: Check Jules access permissions
+
+**Pattern: "Browserbase connection failed"**
+- Symptom: Network errors with browserbase mode
+- Cause: Invalid API credentials or network issues
+- Fix: Verify Browserbase credentials
+
+### STEP 3: Mode-Specific Troubleshooting
+
+**Chrome Profile Issues:**
+1. Verify profile path exists
+2. Check Chrome isn't running (conflicts with automation)
+3. Ensure profile has Google authentication
+
+**Cookie Issues:**
+1. Check cookie format and validity
+2. Verify cookies aren't expired
+3. Re-extract fresh cookies if needed
+
+**Browserbase Issues:**
+1. Verify API key and project ID
+2. Check network connectivity
+3. Create new session if existing one is corrupted
+
+**Persistent Mode Issues:**
+1. Check browser data directory permissions
+2. Clear corrupted browser data if needed
+3. Restart with fresh persistent directory
+
+### STEP 4: Progressive Repair Strategy
+
+Try fixes in this order:
+
+1. **Quick Fix:**
+   - Restart MCP server
+   - Use \`jules_session_info\` to verify restart
+
+2. **Session Refresh:**
+   - Clear current session data
+   - Re-authenticate with chosen method
+
+3. **Configuration Reset:**
+   - Switch to 'fresh' mode temporarily
+   - Test basic functionality
+   - Reconfigure preferred mode
+
+4. **Environment Validation:**
+   - Verify all environment variables
+   - Test with minimal configuration
+   - Gradually add complexity
+
+### STEP 5: Automated Repair Commands
+
+**Reset Session:**
+\`\`\`
+# Clear browser data and restart
+jules_session_info  # Check current state
+jules_screenshot    # See what browser shows
+\`\`\`
+
+**Re-extract Cookies:**
+\`\`\`
+# If using cookie mode
+jules_get_cookies   # Extract current cookies
+jules_set_cookies   # Apply fresh cookies
+\`\`\`
+
+**Test Connectivity:**
+\`\`\`
+# Minimal test to verify authentication
+jules_list_tasks    # Should work without errors
+\`\`\`
+
+### STEP 6: Escalation Path
+
+If basic troubleshooting fails:
+1. Switch to \`SESSION_MODE=fresh\` for immediate testing
+2. Guide manual authentication for urgent tasks
+3. Document exact error messages and configuration
+4. Recommend Browserbase mode for persistent solution
+
+### PREVENTION:
+- Monitor session health with periodic \`jules_session_info\` calls
+- Set up automated cookie refresh if using cookie mode
+- Use Browserbase for production deployments to avoid local issues
+
+Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to understand the current state before attempting fixes.`
             }]
           };
         default:
@@ -1136,6 +1655,166 @@ class GoogleJulesMCP {
         {
           type: 'text',
           text: `Jules MCP Session Info:\\n${JSON.stringify(sessionInfo, null, 2)}`
+        }
+      ]
+    };
+  }
+
+  private async setupWizard(args: any) {
+    const { environment = 'auto-detect', preferences = {} } = args;
+    const { priority = 'ease-of-use', hasChrome = true, cloudDeployment = false } = preferences;
+
+    // Auto-detect environment if requested
+    let detectedEnv = environment;
+    if (environment === 'auto-detect') {
+      // Check for cloud environment indicators
+      const isCloud = process.env.NODE_ENV === 'production' || 
+                     process.env.SMITHERY_DEPLOYMENT === 'true' ||
+                     !hasChrome;
+      detectedEnv = isCloud ? 'cloud' : 'local';
+    }
+
+    // Intelligent recommendation based on environment and preferences
+    let recommendation = '';
+    let setupInstructions = '';
+    let nextSteps = [];
+
+    if (detectedEnv === 'cloud' || detectedEnv === 'smithery' || cloudDeployment) {
+      recommendation = 'browserbase';
+      setupInstructions = `
+🌐 **RECOMMENDED: Browserbase Mode**
+
+Perfect for cloud deployment! Here's why:
+- ✅ No local browser dependencies
+- ✅ Persistent Google sessions in the cloud  
+- ✅ Works on Smithery and other cloud platforms
+- ✅ Zero local setup required
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=browserbase
+BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds
+BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb
+\`\`\``;
+
+      nextSteps = [
+        'Read jules://prompts/browserbase-setup for detailed setup',
+        'Use jules_session_info to verify configuration',
+        'Test with jules_screenshot to see remote browser',
+        'Create first task with jules_create_task'
+      ];
+
+    } else if (priority === 'ease-of-use' && hasChrome) {
+      recommendation = 'chrome-profile';
+      setupInstructions = `
+🌍 **RECOMMENDED: Chrome Profile Mode**
+
+Easiest setup for local development:
+- ✅ Uses your existing Google Chrome login
+- ✅ No manual cookie extraction needed
+- ✅ Immediate authentication
+- ✅ Most reliable for local development
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=chrome-profile
+CHROME_USER_DATA_DIR=/Users/[username]/Library/Application Support/Google/Chrome/Default
+\`\`\`
+
+**Auto-detect your Chrome profile:**
+\`find ~/Library/Application\\ Support/Google/Chrome -name "Default" -type d 2>/dev/null\``;
+
+      nextSteps = [
+        'Read jules://guides/session-modes for profile path detection',
+        'Set CHROME_USER_DATA_DIR environment variable', 
+        'Use jules_session_info to verify configuration',
+        'Test with jules_create_task to confirm authentication'
+      ];
+
+    } else if (priority === 'portability') {
+      recommendation = 'cookies';
+      setupInstructions = `
+🍪 **RECOMMENDED: Cookie Mode**
+
+Best for multi-machine portability:
+- ✅ Works across different computers
+- ✅ Cookies stored as environment variables  
+- ✅ No local browser dependencies
+- ✅ Easy backup and restore
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=cookies
+GOOGLE_AUTH_COOKIES="session_id=abc123; domain=.google.com; auth_token=xyz789; domain=.google.com"
+COOKIES_PATH=~/.jules-mcp/cookies.json
+\`\`\``;
+
+      nextSteps = [
+        'Read jules://prompts/cookie-extraction for step-by-step extraction',
+        'Use jules_get_cookies to extract your current session',
+        'Format cookies for GOOGLE_AUTH_COOKIES environment variable',
+        'Test with jules_set_cookies and jules_session_info'
+      ];
+
+    } else {
+      recommendation = 'persistent';
+      setupInstructions = `
+💾 **RECOMMENDED: Persistent Mode**
+
+Maximum reliability and control:
+- ✅ Full browser data persistence
+- ✅ Complete control over authentication
+- ✅ Reliable across restarts
+- ✅ Local data security
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=persistent  
+CHROME_USER_DATA_DIR=~/.jules-mcp/browser-data
+\`\`\``;
+
+      nextSteps = [
+        'Create browser data directory if needed',
+        'Use jules_session_info to verify configuration',
+        'Complete initial Google authentication',
+        'Test persistence with multiple MCP restarts'
+      ];
+    }
+
+    const wizardResponse = `# Jules MCP Setup Wizard Results
+
+## Environment Analysis
+- **Detected Environment**: ${detectedEnv}
+- **User Priority**: ${priority}
+- **Has Chrome Access**: ${hasChrome}
+- **Cloud Deployment**: ${cloudDeployment}
+
+${setupInstructions}
+
+## Next Steps
+${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
+
+## Quick Commands
+- \`jules_session_info\` - Check current configuration
+- \`jules_screenshot\` - Debug authentication state  
+- \`jules_create_task\` - Test end-to-end functionality
+
+## Need Help?
+- Read jules://prompts/session-setup for comprehensive automation guide
+- Read jules://troubleshooting/authentication for common issues
+- Use jules_setup_wizard again with different preferences to see alternatives
+
+**Current Configuration Status:**
+- Session Mode: ${this.config.sessionMode}
+- Has Browserbase Config: ${!!(this.config.browserbaseApiKey && this.config.browserbaseProjectId)}
+- Has Chrome Profile: ${!!this.config.userDataDir}
+- Has Auth Cookies: ${!!this.config.googleAuthCookies}`;
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: wizardResponse
         }
       ]
     };

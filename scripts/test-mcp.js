@@ -65,6 +65,17 @@ async function testJulesMCP() {
           arguments: {}
         }
       }
+    },
+    {
+      name: 'Session Setup Prompt (Test)',
+      request: {
+        jsonrpc: '2.0',
+        id: 6,
+        method: 'resources/read',
+        params: {
+          uri: 'jules://prompts/session-setup'
+        }
+      }
     }
   ];
 
