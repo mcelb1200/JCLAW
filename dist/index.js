@@ -244,6 +244,38 @@ class GoogleJulesMCP {
                             properties: {},
                         },
                     },
+                    {
+                        name: 'jules_setup_wizard',
+                        description: 'Interactive session setup wizard for automated Google authentication configuration',
+                        inputSchema: {
+                            type: 'object',
+                            properties: {
+                                environment: {
+                                    type: 'string',
+                                    enum: ['local', 'cloud', 'smithery', 'auto-detect'],
+                                    description: 'Deployment environment (auto-detect will analyze current setup)',
+                                },
+                                preferences: {
+                                    type: 'object',
+                                    properties: {
+                                        priority: {
+                                            type: 'string',
+                                            enum: ['ease-of-use', 'reliability', 'portability', 'performance'],
+                                            description: 'User priority for session management'
+                                        },
+                                        hasChrome: {
+                                            type: 'boolean',
+                                            description: 'Whether user has local Chrome browser access'
+                                        },
+                                        cloudDeployment: {
+                                            type: 'boolean',
+                                            description: 'Whether deploying to cloud platforms'
+                                        }
+                                    }
+                                }
+                            },
+                        },
+                    },
                 ],
             };
         });
@@ -275,6 +307,8 @@ class GoogleJulesMCP {
                         return await this.setCookies(args);
                     case 'jules_session_info':
                         return await this.getSessionInfo(args);
+                    case 'jules_setup_wizard':
+                        return await this.setupWizard(args);
                     default:
                         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
                 }
@@ -1472,6 +1506,156 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
                 {
                     type: 'text',
                     text: `Jules MCP Session Info:\\n${JSON.stringify(sessionInfo, null, 2)}`
+                }
+            ]
+        };
+    }
+    async setupWizard(args) {
+        const { environment = 'auto-detect', preferences = {} } = args;
+        const { priority = 'ease-of-use', hasChrome = true, cloudDeployment = false } = preferences;
+        // Auto-detect environment if requested
+        let detectedEnv = environment;
+        if (environment === 'auto-detect') {
+            // Check for cloud environment indicators
+            const isCloud = process.env.NODE_ENV === 'production' ||
+                process.env.SMITHERY_DEPLOYMENT === 'true' ||
+                !hasChrome;
+            detectedEnv = isCloud ? 'cloud' : 'local';
+        }
+        // Intelligent recommendation based on environment and preferences
+        let recommendation = '';
+        let setupInstructions = '';
+        let nextSteps = [];
+        if (detectedEnv === 'cloud' || detectedEnv === 'smithery' || cloudDeployment) {
+            recommendation = 'browserbase';
+            setupInstructions = `
+🌐 **RECOMMENDED: Browserbase Mode**
+
+Perfect for cloud deployment! Here's why:
+- ✅ No local browser dependencies
+- ✅ Persistent Google sessions in the cloud  
+- ✅ Works on Smithery and other cloud platforms
+- ✅ Zero local setup required
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=browserbase
+BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds
+BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb
+\`\`\``;
+            nextSteps = [
+                'Read jules://prompts/browserbase-setup for detailed setup',
+                'Use jules_session_info to verify configuration',
+                'Test with jules_screenshot to see remote browser',
+                'Create first task with jules_create_task'
+            ];
+        }
+        else if (priority === 'ease-of-use' && hasChrome) {
+            recommendation = 'chrome-profile';
+            setupInstructions = `
+🌍 **RECOMMENDED: Chrome Profile Mode**
+
+Easiest setup for local development:
+- ✅ Uses your existing Google Chrome login
+- ✅ No manual cookie extraction needed
+- ✅ Immediate authentication
+- ✅ Most reliable for local development
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=chrome-profile
+CHROME_USER_DATA_DIR=/Users/[username]/Library/Application Support/Google/Chrome/Default
+\`\`\`
+
+**Auto-detect your Chrome profile:**
+\`find ~/Library/Application\\ Support/Google/Chrome -name "Default" -type d 2>/dev/null\``;
+            nextSteps = [
+                'Read jules://guides/session-modes for profile path detection',
+                'Set CHROME_USER_DATA_DIR environment variable',
+                'Use jules_session_info to verify configuration',
+                'Test with jules_create_task to confirm authentication'
+            ];
+        }
+        else if (priority === 'portability') {
+            recommendation = 'cookies';
+            setupInstructions = `
+🍪 **RECOMMENDED: Cookie Mode**
+
+Best for multi-machine portability:
+- ✅ Works across different computers
+- ✅ Cookies stored as environment variables  
+- ✅ No local browser dependencies
+- ✅ Easy backup and restore
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=cookies
+GOOGLE_AUTH_COOKIES="session_id=abc123; domain=.google.com; auth_token=xyz789; domain=.google.com"
+COOKIES_PATH=~/.jules-mcp/cookies.json
+\`\`\``;
+            nextSteps = [
+                'Read jules://prompts/cookie-extraction for step-by-step extraction',
+                'Use jules_get_cookies to extract your current session',
+                'Format cookies for GOOGLE_AUTH_COOKIES environment variable',
+                'Test with jules_set_cookies and jules_session_info'
+            ];
+        }
+        else {
+            recommendation = 'persistent';
+            setupInstructions = `
+💾 **RECOMMENDED: Persistent Mode**
+
+Maximum reliability and control:
+- ✅ Full browser data persistence
+- ✅ Complete control over authentication
+- ✅ Reliable across restarts
+- ✅ Local data security
+
+**Configuration:**
+\`\`\`bash
+SESSION_MODE=persistent  
+CHROME_USER_DATA_DIR=~/.jules-mcp/browser-data
+\`\`\``;
+            nextSteps = [
+                'Create browser data directory if needed',
+                'Use jules_session_info to verify configuration',
+                'Complete initial Google authentication',
+                'Test persistence with multiple MCP restarts'
+            ];
+        }
+        const wizardResponse = `# Jules MCP Setup Wizard Results
+
+## Environment Analysis
+- **Detected Environment**: ${detectedEnv}
+- **User Priority**: ${priority}
+- **Has Chrome Access**: ${hasChrome}
+- **Cloud Deployment**: ${cloudDeployment}
+
+${setupInstructions}
+
+## Next Steps
+${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
+
+## Quick Commands
+- \`jules_session_info\` - Check current configuration
+- \`jules_screenshot\` - Debug authentication state  
+- \`jules_create_task\` - Test end-to-end functionality
+
+## Need Help?
+- Read jules://prompts/session-setup for comprehensive automation guide
+- Read jules://troubleshooting/authentication for common issues
+- Use jules_setup_wizard again with different preferences to see alternatives
+
+**Current Configuration Status:**
+- Session Mode: ${this.config.sessionMode}
+- Has Browserbase Config: ${!!(this.config.browserbaseApiKey && this.config.browserbaseProjectId)}
+- Has Chrome Profile: ${!!this.config.userDataDir}
+- Has Auth Cookies: ${!!this.config.googleAuthCookies}`;
+        return {
+            content: [
+                {
+                    type: 'text',
+                    text: wizardResponse
                 }
             ]
         };

@@ -7,7 +7,9 @@ mcpServers:
       HEADLESS: "true"
       TIMEOUT: "30000"
       DEBUG: "false"
-      SESSION_MODE: "fresh"
+      SESSION_MODE: "browserbase"
+      BROWSERBASE_API_KEY: "bb_live_g3i-b4WPFh__E3cErKE5rO-jWds"
+      BROWSERBASE_PROJECT_ID: "d718e85f-be7b-497d-9123-b1bbf798f1bb"
     schema:
       type: object
       properties:
@@ -28,7 +30,7 @@ mcpServers:
         SESSION_MODE:
           type: string
           enum: ["fresh", "chrome-profile", "cookies", "persistent", "browserbase"]
-          default: "fresh"
+          default: "browserbase"
           description: "Session management mode: fresh (no session), chrome-profile (use Chrome profile), cookies (save/load cookies), persistent (save browser data), browserbase (remote browser)"
         JULES_DATA_PATH:
           type: string
@@ -71,3 +73,57 @@ mcpServers:
       - modelcontextprotocol
       - browserbase
       - session-management
+    # Explicit tool definitions for Smithery
+    tools:
+      - name: "jules_create_task"
+        description: "Create a new task in Google Jules with repository and description"
+      - name: "jules_get_task"
+        description: "Get details of a specific Jules task by ID or URL"
+      - name: "jules_send_message"
+        description: "Send a message/instruction to Jules in an active task"
+      - name: "jules_approve_plan"
+        description: "Approve Jules execution plan for a task"
+      - name: "jules_resume_task"
+        description: "Resume a paused Jules task"
+      - name: "jules_list_tasks"
+        description: "List all Jules tasks with their status"
+      - name: "jules_analyze_code"
+        description: "Analyze code changes and diff in a Jules task"
+      - name: "jules_bulk_create_tasks"
+        description: "Create multiple tasks from a list of descriptions and repositories"
+      - name: "jules_screenshot"
+        description: "Take a screenshot of current Jules page for debugging"
+      - name: "jules_get_cookies"
+        description: "Get current browser cookies for session persistence"
+      - name: "jules_set_cookies"
+        description: "Set browser cookies from string or JSON for authentication"
+      - name: "jules_session_info"
+        description: "Get current session configuration and status"
+      - name: "jules_setup_wizard"
+        description: "Interactive session setup wizard for automated Google authentication configuration"
+    # Explicit resource definitions for Smithery
+    resources:
+      - uri: "jules://schemas/task"
+        name: "Task Schema"
+        description: "Complete task model with all available attributes"
+      - uri: "jules://current/active-tasks"
+        name: "Active Tasks"
+        description: "Live list of active tasks in Jules"
+      - uri: "jules://templates/common-tasks"
+        name: "Common Task Templates"
+        description: "Template examples for common development tasks"
+      - uri: "jules://prompts/session-setup"
+        name: "Session Setup Automation"
+        description: "Step-by-step prompts for automated Google authentication setup"
+      - uri: "jules://prompts/cookie-extraction"
+        name: "Cookie Extraction Guide"
+        description: "Automated prompts for extracting Google authentication cookies"
+      - uri: "jules://prompts/browserbase-setup"
+        name: "Browserbase Configuration"
+        description: "Automated Browserbase setup for remote browser sessions"
+      - uri: "jules://guides/session-modes"
+        name: "Session Mode Selection Guide"
+        description: "Intelligent guide for choosing the optimal session management mode"
+      - uri: "jules://troubleshooting/authentication"
+        name: "Authentication Troubleshooting"
+        description: "Automated diagnostics and fixes for authentication issues"
