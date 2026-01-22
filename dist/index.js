@@ -7,6 +7,8 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import axios from 'axios';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 class GoogleJulesMCP {
     constructor() {
         this.browser = null;
@@ -26,7 +28,11 @@ class GoogleJulesMCP {
             browserbaseProjectId: process.env.BROWSERBASE_PROJECT_ID,
             browserbaseSessionId: process.env.BROWSERBASE_SESSION_ID,
             // Google Auth Cookies as string
-            googleAuthCookies: process.env.GOOGLE_AUTH_COOKIES
+            googleAuthCookies: process.env.GOOGLE_AUTH_COOKIES,
+            // Jules API Key
+            julesApiKey: process.env.JULES_API_KEY,
+            // Jules CLI Path
+            julesCliPath: process.env.JULES_CLI_PATH || "jules"
         };
         this.dataPath = this.config.dataPath;
         this.server = new Server({
@@ -262,6 +268,21 @@ class GoogleJulesMCP {
                             required: ['cookies'],
                         },
                     },
+                    {
+                        name: "jules_cli",
+                        description: "Execute a command using the Jules CLI for token efficiency",
+                        inputSchema: {
+                            type: "object",
+                            properties: {
+                                args: {
+                                    type: "array",
+                                    items: { type: "string" },
+                                    description: "Arguments to pass to the jules command",
+                                },
+                            },
+                            required: ["args"],
+                        },
+                    },
                     // === DEBUGGING & UTILITIES ===
                     {
                         name: 'jules_screenshot',
@@ -303,6 +324,12 @@ class GoogleJulesMCP {
                         return await this.analyzeCode(args);
                     case 'jules_bulk_create_tasks':
                         return await this.bulkCreateTasks(args);
+                    case "jules_cli":
+                        const cliArgs = args.args;
+                        const output = await this.runJulesCli(cliArgs);
+                        return {
+                            content: [{ type: "text", text: output }]
+                        };
                     case 'jules_screenshot':
                         return await this.takeScreenshot(args);
                     case 'jules_get_cookies':
@@ -532,7 +559,8 @@ Guide them step-by-step:
    - Any cookie with 'auth' or 'session' in the name
 
 ### STEP 3: Format Cookies for Environment Variable
-Help format as: \`name=value; domain=.google.com; name2=value2; domain=.google.com\`
+Help format as: \
+ame=value; domain=.google.com; name2=value2; domain=.google.com\`
 
 Example:
 \`\`\`
@@ -1135,7 +1163,121 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         }
         return taskIdOrUrl;
     }
+    async runJulesCli(args) {
+        const execPromise = promisify(exec);
+        const cliPath = this.config.julesCliPath || "jules";
+        const command = `${cliPath} ${args.join(" ")}`;
+        try {
+            console.error(`Executing Jules CLI: ${command}`);
+            const { stdout, stderr } = await execPromise(command);
+            if (stderr && !stdout) {
+                throw new Error(stderr);
+            }
+            return stdout;
+        }
+        catch (error) {
+            throw new Error(`Jules CLI Error: ${error.message}`);
+        }
+    }
+    async createTaskViaApi(args) {
+        const { description, repository, branch = "main" } = args;
+        if (!this.config.julesApiKey) {
+            throw new Error("JULES_API_KEY is required for API-based task creation");
+        }
+        try {
+            console.error(`Creating task via API for ${repository}...`);
+            const response = await axios.post("https://jules.googleapis.com/v1alpha/sessions", {
+                prompt: description,
+                sourceContext: {
+                    source: `sources/github/${repository}`,
+                    githubRepoContext: {
+                        startingBranch: branch
+                    }
+                },
+                title: description.slice(0, 50) + (description.length > 50 ? "..." : ""),
+                requirePlanApproval: true
+            }, {
+                headers: {
+                    "x-goog-api-key": this.config.julesApiKey,
+                    "Content-Type": "application/json"
+                }
+            });
+            const session = response.data;
+            const taskId = session.id || session.name.split("/").pop();
+            const url = `https://jules.google.com/task/${taskId}`;
+            // Create task object for local tracking
+            const task = {
+                id: taskId,
+                title: session.title || description.slice(0, 50),
+                description,
+                repository,
+                branch,
+                status: "pending",
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                url,
+                chatHistory: [],
+                sourceFiles: []
+            };
+            // Save to data
+            const data = await this.loadTaskData();
+            data.tasks.push(task);
+            await this.saveTaskData(data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Task created successfully via API!\n\nTask ID: ${taskId}\nRepository: ${repository}\nBranch: ${branch}\nURL: ${url}\n\nJules is now analyzing the task.`
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            const errorDetail = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+            throw new Error(`API Task Creation Failed: ${errorDetail}`);
+        }
+    }
     // Tool implementations
+    async sendMessageViaApi(args) {
+        const { taskId, message } = args;
+        const actualTaskId = this.extractTaskId(taskId);
+        if (!this.config.julesApiKey) {
+            throw new Error("JULES_API_KEY is required for API-based messages");
+        }
+        try {
+            console.error(`Sending message to session ${actualTaskId} via API...`);
+            await axios.post(`https://jules.googleapis.com/v1alpha/sessions/${actualTaskId}:sendMessage`, {
+                prompt: message
+            }, {
+                headers: {
+                    "x-goog-api-key": this.config.julesApiKey,
+                    "Content-Type": "application/json"
+                }
+            });
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `Message sent successfully to Jules session ${actualTaskId} via API.`
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            const errorDetail = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+            throw new Error(`API Message Sending Failed: ${errorDetail}`);
+        }
+    }
+    async approvePlanViaApi(args) {
+        const { taskId } = args;
+        const message = "Approved. Please proceed with the plan.";
+        return await this.sendMessageViaApi({ taskId, message });
+    }
+    async resumeTaskViaApi(args) {
+        const { taskId } = args;
+        const message = "Please resume the task.";
+        return await this.sendMessageViaApi({ taskId, message });
+    }
     async createTask(args) {
         const { description, repository, branch = 'main' } = args;
         const page = await this.getPage();
