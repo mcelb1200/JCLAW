@@ -4,6 +4,11 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 
 ## Features
 
+### REST API & CLI Support (NEW!)
+- **Direct API Integration**: Use your Jules AI PAT (JULES_API_KEY) for faster, more reliable task management without browser overhead.
+- **Token Efficient CLI**: Execute Jules commands directly via the local CLI for maximum token efficiency.
+- **Hybrid Execution**: Automatically falls back to browser automation if an API key is not provided.
+
 ### 🎯 **Task Management**
 - **Create Tasks**: Automatically create Jules tasks with repository and description
 - **Monitor Progress**: Track task status and get real-time updates
@@ -37,6 +42,7 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 ## Available Tools
 
 | Tool | Description |
+| `jules_cli` | Execute a command using the Jules CLI for token efficiency |
 |------|-------------|
 | **Task Management** ||
 | `jules_create_task` | Create a new Jules task with repository and description |
