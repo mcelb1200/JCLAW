@@ -290,6 +290,20 @@ class GoogleJulesMCP {
               required: ['taskId'],
             },
           },
+          {
+            name: 'jules_code_review',
+            description: 'Extracts the most recent code review or reasoning analysis from a Jules session. Provides insights into Jules decisions and verification ratings.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                taskId: {
+                  type: 'string',
+                  description: 'Task ID or URL to inspect.',
+                },
+              },
+              required: ['taskId'],
+            },
+          },
           // === ADVANCED TASK OPERATIONS ===
           {
             name: 'jules_analyze_code',
@@ -466,6 +480,8 @@ class GoogleJulesMCP {
             return await this.checkFeedback(args);
           case 'jules_audit_report':
             return await this.generateAuditReport(args);
+          case 'jules_code_review':
+            return await this.getCodeReview(args);
           case 'jules_delegate_task':
           case 'jules_list_tasks':
             return await this.listTasks(args);
@@ -1947,6 +1963,8 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
   private async getTaskViaBrowser(args: any) {
     const { taskId } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+    const page = await this.getPage();
 
     try {
       // Navigate to task
@@ -2000,7 +2018,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
                   `Status: ${taskData.status}\n` +
                   `URL: ${url}\n` +
                   `Source Files (${taskData.sourceFiles.length}):\n` +
-                  taskData.sourceFiles.map(f => `  - ${f.filename}`).join('\n') +
+                  taskData.sourceFiles.map((f: any) => `  - ${f.filename}`).join('\n') +
                   `\n\nRecent Chat Messages (${taskData.chatMessages.length}):\n` +
                   taskData.chatMessages.slice(-3).map(m => `  - ${m.content.slice(0, 100)}...`).join('\n')
           }
@@ -2023,6 +2041,9 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async sendMessageViaBrowser(args: any) {
+    const { taskId, message } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+    const page = await this.getPage();
 
     try {
       const url = taskId.includes('jules.google.com') ? taskId : `${this.config.baseUrl}/task/${actualTaskId}`;
@@ -2065,6 +2086,9 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async approvePlanViaBrowser(args: any) {
+    const { taskId } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+    const page = await this.getPage();
 
     try {
       const url = taskId.includes('jules.google.com') ? taskId : `${this.config.baseUrl}/task/${actualTaskId}`;
@@ -2112,6 +2136,9 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async resumeTaskViaBrowser(args: any) {
+    const { taskId } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+    const page = await this.getPage();
 
     try {
       const url = taskId.includes('jules.google.com') ? taskId : `${this.config.baseUrl}/task/${actualTaskId}`;
@@ -2260,7 +2287,10 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       );
 
       const activities = response.data.activities || [];
-      const summary = activities.map((a: any) => `- ${a.description || a.type}`).join('\n');
+      const summary = activities.map((a: any) => {
+        const type = Object.keys(a).find(k => k !== 'createTime' && k !== 'name' && k !== 'description') || 'activity';
+        return `- ${type}: ${a.description || a[type]?.description || a[type]?.prompt || ""}`;
+      }).join('\n');
 
       // Find ChangeSet artifacts to salvage code
       const changeSets = activities
@@ -2411,9 +2441,14 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         } else if (a.progressUpdated) {
           eventType = "PROGRESS";
           detail = a.progressUpdated.description;
+        } else {
+          // Detect arbitrary event type from top-level key
+          eventType = Object.keys(a).find(k => k !== 'createTime' && k !== 'name' && k !== 'description') || "ACTIVITY";
+          detail = a.description || "No detail";
         }
 
-        return `| ${new Date(a.createTime).toLocaleString()} | ${eventType} | ${detail.replace(/\n/g, ' ')} |`;
+        const safeDetail = (detail || "").replace(/\n/g, ' ');
+        return `| ${new Date(a.createTime).toLocaleString()} | ${eventType} | ${safeDetail} |`;
       }).reverse();
 
       // 4. Identify Code Outcomes
@@ -2422,7 +2457,98 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         `✅ Delivered ${patches.length} code checkpoint(s). Final patch salvaged: ${patches[0].suggestedCommitMessage}` :
         `❌ No code patches recorded in session history.`;
 
-      // 5. Construct Markdown Report
+      // 5. Identify Most Recent Code Review
+      const reviewText = this.extractCodeReviewFromActivities(activities);
+
+      // 6. Construct Markdown Report
+      const report = [
+        `# 🛡️ Jules Session Audit Report`,
+        `**Session ID**: \`${actualTaskId}\``,
+        `**Title**: ${session.title}`,
+        `**Final State**: \`${session.state}\``,
+        `**Repository**: ${session.sourceContext?.source || "Unknown"}`,
+        `**Generated At**: ${new Date().toLocaleString()}`,
+        ``,
+        `## 📝 Intent Statement (Initial Prompt)`,
+        `> ${session.prompt || "No initial prompt record available."}`,
+        ``,
+        ...(reviewText ? [`## 🔍 Most Recent Code Review`, `> ${reviewText.replace(/\n/g, '\n> ')}`, ``] : []),
+        `## 🔄 Delivery Activity Log`,
+        `| Timestamp | Event Type | Details |`,
+        `| :--- | :--- | :--- |`,
+        ...events,
+        ``,
+        `## 🏁 Verification & Outcome`,
+        outcomeText,
+        ``,
+        `**Audit Conclusion**: ${session.state === 'COMPLETED' ? "Successfully Delivered" : "Incomplete or Failed Delivery"}`,
+        `---`,
+        `*Report generated via Google Jules MCP Audit Tier.*`
+      ].join('\n');
+
+      return {
+        content: [{ type: "text", text: report }]
+      };
+    } catch (error: any) {
+      throw new Error(`Audit Report Generation Failed: ${error.message}`);
+    }
+  }
+
+  private extractCodeReviewFromActivities(activities: any[]): string | undefined {
+    // Search for PROGRESS activities that contain analysis/reasoning keywords
+    const reviewActivity = activities.find(a => {
+      const detail = a.progressUpdated?.description || a.description || "";
+      return detail.includes("Analysis and Reasoning") ||
+             detail.includes("Evaluation of the Solution") ||
+             detail.includes("Merge Assessment") ||
+             detail.includes("#Correct#") ||
+             detail.includes("#Incomplete#");
+    });
+
+    return reviewActivity ? (reviewActivity.progressUpdated?.description || reviewActivity.description) : undefined;
+  }
+
+  private async getCodeReview(args: any) {
+    const { taskId } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+
+    if (!this.config.julesApiKey) {
+      throw new Error("JULES_API_KEY is required for code review extraction.");
+    }
+
+    try {
+      const activitiesResponse = await axios.get(
+        `https://jules.googleapis.com/v1alpha/sessions/${actualTaskId}/activities?pageSize=50`,
+        { headers: { "x-goog-api-key": this.config.julesApiKey } }
+      );
+      const activities = activitiesResponse.data.activities || [];
+      const review = this.extractCodeReviewFromActivities(activities);
+
+      if (review) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `## 🔍 Latest Code Review for Session ${actualTaskId}\n\n${review}`
+            }
+          ]
+        };
+      } else {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ No formal code review found in the session history for ${actualTaskId}.\n\n` +
+                    `You can instruct Jules to perform a review by sending a message:\n` +
+                    `"Please perform a final code review and provide a merge assessment."`
+            }
+          ]
+        };
+      }
+    } catch (error: any) {
+      throw new Error(`Failed to extract code review: ${error.message}`);
+    }
+  }
       const report = [
         `# 🛡️ Jules Session Audit Report`,
         `**Session ID**: \`${actualTaskId}\``,
