@@ -38,6 +38,8 @@ interface JulesConfig {
   julesApiKey?: string;
   // Path to Jules CLI (e.g., jules.cmd)
   julesCliPath?: string;
+  // Workspace Directory for Jules CLI execution
+  workspaceDir?: string;
 }
 
 // Browserbase session interface
@@ -420,6 +422,21 @@ export class GoogleJulesMCP {
               required: ['cookies'],
             },
           },
+          {
+            name: "jules_cli",
+            description: "Execute a command using the Jules CLI for token efficiency",
+            inputSchema: {
+              type: "object",
+              properties: {
+                args: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Arguments to pass to the jules command",
+                },
+              },
+              required: ["args"],
+            },
+          },
           // === DEBUGGING & UTILITIES ===
           {
             name: 'jules_screenshot',
@@ -722,7 +739,8 @@ Guide them step-by-step:
    - Any cookie with 'auth' or 'session' in the name
 
 ### STEP 3: Format Cookies for Environment Variable
-Help format as: \`name=value; domain=.google.com; name2=value2; domain=.google.com\`
+Help format as: \
+ame=value; domain=.google.com; name2=value2; domain=.google.com\`
 
 Example:
 \`\`\`
@@ -1756,6 +1774,56 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   // Tool implementations
+  private async sendMessageViaApi(args: any) {
+    const { taskId, message } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+
+    if (!this.config.julesApiKey) {
+      throw new Error("JULES_API_KEY is required for API-based messages");
+    }
+
+    try {
+      console.error(`Sending message to session ${actualTaskId} via API...`);
+
+      await axios.post(
+        `https://jules.googleapis.com/v1alpha/sessions/${actualTaskId}:sendMessage`,
+        {
+          prompt: message
+        },
+        {
+          headers: {
+            "x-goog-api-key": this.config.julesApiKey,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Message sent successfully to Jules session ${actualTaskId} via API.`
+          }
+        ]
+      };
+    } catch (error: any) {
+      const errorDetail = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+      throw new Error(`API Message Sending Failed: ${errorDetail}`);
+    }
+  }
+
+  private async approvePlanViaApi(args: any) {
+    const { taskId } = args;
+    const message = "Approved. Please proceed with the plan.";
+    return await this.sendMessageViaApi({ taskId, message });
+  }
+
+  private async resumeTaskViaApi(args: any) {
+    const { taskId } = args;
+    const message = "Please resume the task.";
+    return await this.sendMessageViaApi({ taskId, message });
+  }
+
   private async createTask(args: any) {
     // PREFERRED: Jules CLI
     try {
@@ -2223,14 +2291,14 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
   private async listTasksViaCli(args: any) {
     const { status = 'all' } = args;
-    let cliArgs = ["remote", "list", "--session"];
+    let cliArgs = ["task", "list"];
     if (status !== 'all') {
       cliArgs.push("--status", status);
     }
 
     const output = await this.runJulesCli(cliArgs);
     return {
-      content: [{ type: "text", text: `Jules CLI Session List:\n\n${output}` }]
+      content: [{ type: "text", text: `Jules CLI Task List:\n\n${output}` }]
     };
   }
 
@@ -2372,14 +2440,15 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     const { taskId } = args;
     const actualTaskId = this.extractTaskId(taskId);
 
-    // Get session status via CLI
-    const status = await this.runJulesCli(["remote", "list", "--session", actualTaskId]);
+    // Attempt to get status and diff via CLI
+    const status = await this.runJulesCli(["task", "status", actualTaskId]);
+    const diff = await this.runJulesCli(["task", "diff", actualTaskId]);
 
     return {
       content: [
         {
           type: "text",
-          text: `Jules CLI Status for Session ${actualTaskId}:\n\n${status}\n\nNote: For detailed diffs, use jules_analyze_code with API or Browser.`
+          text: `Jules CLI Code Analysis for Task ${actualTaskId}:\n\n--- STATUS ---\n${status}\n\n--- DIFF ---\n${diff}`
         }
       ]
     };
@@ -2545,37 +2614,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       throw new Error(`Failed to extract code review: ${error.message}`);
     }
   }
-      const report = [
-        `# 🛡️ Jules Session Audit Report`,
-        `**Session ID**: \`${actualTaskId}\``,
-        `**Title**: ${session.title}`,
-        `**Final State**: \`${session.state}\``,
-        `**Repository**: ${session.sourceContext?.source || "Unknown"}`,
-        `**Generated At**: ${new Date().toLocaleString()}`,
-        ``,
-        `## 📝 Intent Statement (Initial Prompt)`,
-        `> ${session.prompt || "No initial prompt record available."}`,
-        ``,
-        `## 🔄 Delivery Activity Log`,
-        `| Timestamp | Event Type | Details |`,
-        `| :--- | :--- | :--- |`,
-        ...events,
-        ``,
-        `## 🏁 Verification & Outcome`,
-        outcomeText,
-        ``,
-        `**Audit Conclusion**: ${session.state === 'COMPLETED' ? "Successfully Delivered" : "Incomplete or Failed Delivery"}`,
-        `---`,
-        `*Report generated via Google Jules MCP Audit Tier.*`
-      ].join('\n');
 
-      return {
-        content: [{ type: "text", text: report }]
-      };
-    } catch (error: any) {
-      throw new Error(`Audit Report Generation Failed: ${error.message}`);
-    }
-  }
 
   private async bulkCreateTasks(args: any) {
     const { tasks } = args;
@@ -2703,6 +2742,18 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async getSessionInfo(args: any) {
+    // Check if CLI is functional
+    let hasJulesCli = false;
+    let resolvedCliPath = "jules";
+    try {
+      resolvedCliPath = await this.resolveJulesCliPath();
+      const execPromise = promisify(exec);
+      await execPromise(`${resolvedCliPath} --version`);
+      hasJulesCli = true;
+    } catch (e) {
+      // CLI not found or errored
+    }
+
     const sessionInfo = {
       sessionMode: this.config.sessionMode,
       hasUserDataDir: !!this.config.userDataDir,
@@ -2710,6 +2761,9 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       hasGoogleAuthCookies: !!this.config.googleAuthCookies,
       hasBrowserbaseConfig: !!(this.config.browserbaseApiKey && this.config.browserbaseProjectId),
       browserbaseSessionId: this.config.browserbaseSessionId,
+      hasJulesApiKey: !!this.config.julesApiKey,
+      hasJulesCli,
+      julesCliPath: resolvedCliPath,
       isHeadless: this.config.headless,
       timeout: this.config.timeout,
       baseUrl: this.config.baseUrl,
