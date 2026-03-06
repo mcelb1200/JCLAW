@@ -306,7 +306,7 @@ class GoogleJulesMCP {
                       description: 'Whether user has local Chrome browser access'
                     },
                     cloudDeployment: {
-                      type: 'boolean', 
+                      type: 'boolean',
                       description: 'Whether deploying to cloud platforms'
                     }
                   }
@@ -489,7 +489,7 @@ class GoogleJulesMCP {
 
     this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       const uri = request.params.uri;
-      
+
       switch (uri) {
         case 'jules://schemas/task':
           return {
@@ -563,7 +563,7 @@ Based on their answers, recommend:
 - Next: Proceed to Browserbase setup
 
 **For Local Development:**
-- Recommend: "SESSION_MODE=chrome-profile" 
+- Recommend: "SESSION_MODE=chrome-profile"
 - Explain: "This uses your existing Chrome login"
 - Next: Help find Chrome profile path
 
@@ -597,7 +597,7 @@ Always end by:
 
 ### AUTOMATION COMMANDS TO USE:
 - \`jules_session_info\` - Check current configuration
-- \`jules_get_cookies\` - Extract authentication cookies  
+- \`jules_get_cookies\` - Extract authentication cookies
 - \`jules_set_cookies\` - Test cookie authentication
 - \`jules_screenshot\` - Debug authentication issues
 
@@ -636,7 +636,7 @@ Guide them step-by-step:
 3. **Identify Key Cookies:**
    Look for these important authentication cookies:
    - \`session_id\`, \`sessionid\`, or similar
-   - \`auth_token\`, \`authuser\`, or similar  
+   - \`auth_token\`, \`authuser\`, or similar
    - \`SID\`, \`HSID\`, \`SSID\` (Google-specific)
    - \`SAPISID\`, \`APISID\` (API authentication)
    - Any cookie with 'auth' or 'session' in the name
@@ -670,7 +670,7 @@ If the user has the MCP running with basic access:
 ### AUTOMATION APPROACH:
 If possible, automate this by:
 1. Taking a screenshot of the current Jules page
-2. Using jules_get_cookies if browser access is available  
+2. Using jules_get_cookies if browser access is available
 3. Providing formatted output ready for environment variables`
             }]
           };
@@ -777,7 +777,7 @@ Use this guide to automatically determine the best session mode for each user:
 → NEXT: Read jules://prompts/browserbase-setup
 
 **User Says: "I'm developing locally" + "I use Chrome for Google services"**
-→ **RECOMMEND: chrome-profile** 
+→ **RECOMMEND: chrome-profile**
 → REASON: Leverage existing Google authentication
 → NEXT: Detect Chrome profile path
 
@@ -877,7 +877,7 @@ Run these commands to assess the situation:
 
 1. **Check Session Configuration:**
    \`jules_session_info\`
-   
+
    Look for:
    - \`sessionMode\`: Current mode
    - \`browserConnected\`: Should be true
@@ -886,7 +886,7 @@ Run these commands to assess the situation:
 
 2. **Take Screenshot:**
    \`jules_screenshot\`
-   
+
    This shows what the browser actually sees
 
 ### STEP 2: Common Issue Patterns
@@ -1068,24 +1068,24 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   // Cookie management - Fixed parsing
   private parseCookiesFromString(cookieString: string): Array<{name: string, value: string, domain: string}> {
     const cookies: Array<{name: string, value: string, domain: string}> = [];
-    
+
     // Split by semicolon and process each cookie
     const parts = cookieString.split(';');
-    
+
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i].trim();
-      
+
       // Skip domain specifications
       if (part.startsWith('domain=')) {
         continue;
       }
-      
+
       // Parse name=value pairs
       const equalIndex = part.indexOf('=');
       if (equalIndex > 0) {
         const name = part.substring(0, equalIndex).trim();
         const value = part.substring(equalIndex + 1).trim();
-        
+
         if (name && value) {
           cookies.push({
             name,
@@ -1095,7 +1095,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         }
       }
     }
-    
+
     console.error(`Parsed ${cookies.length} cookies from string`);
     return cookies;
   }
@@ -1180,7 +1180,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         this.page = pages.length > 0 ? pages[0] : await context.newPage();
       } else {
         const browser = await this.getBrowser();
-        
+
         if (this.config.sessionMode === 'browserbase') {
           // For Browserbase, get existing pages or create new one
           const contexts = browser.contexts();
@@ -1275,11 +1275,49 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     return taskIdOrUrl;
   }
 
+  private async resolveJulesCliPath(): Promise<string> {
+    const cliPath = this.config.julesCliPath || "jules";
+    const execPromise = promisify(exec);
+
+    // 1. Try "jules" directly (check PATH)
+    try {
+      const checkCmd = os.platform() === 'win32' ? 'where jules' : 'which jules';
+      await execPromise(checkCmd);
+      return "jules";
+    } catch (e) {
+      // Not in path
+    }
+
+    // 2. Try configured path
+    if (this.config.julesCliPath) {
+      try {
+        const checkCmd = os.platform() === 'win32' ? `where "${this.config.julesCliPath}"` : `ls "${this.config.julesCliPath}"`;
+        await execPromise(checkCmd);
+        return this.config.julesCliPath;
+      } catch (e) {
+        // Configured path invalid
+      }
+    }
+
+    // 3. Fallback to common absolute path if on Windows
+    if (os.platform() === 'win32') {
+      const fallbackPath = path.join(os.homedir(), 'AppData', 'Roaming', 'npm', 'jules.cmd');
+      try {
+        await fs.access(fallbackPath);
+        return fallbackPath;
+      } catch (e) {
+        // Fallback invalid
+      }
+    }
+
+    return "jules"; // Ultimate fallback
+  }
+
   private async runJulesCli(args: string[]): Promise<string> {
     const execPromise = promisify(exec);
-    const cliPath = this.config.julesCliPath || "jules";
+    const cliPath = await this.resolveJulesCliPath();
     const command = `${cliPath} ${args.join(" ")}`;
-    
+
     try {
       console.error(`Executing Jules CLI: ${command}`);
       const { stdout, stderr } = await execPromise(command);
@@ -1294,14 +1332,14 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
   private async createTaskViaApi(args: any) {
     const { description, repository, branch = "main" } = args;
-    
+
     if (!this.config.julesApiKey) {
       throw new Error("JULES_API_KEY is required for API-based task creation");
     }
 
     try {
       console.error(`Creating task via API for ${repository}...`);
-      
+
       const response = await axios.post(
         "https://jules.googleapis.com/v1alpha/sessions",
         {
@@ -1365,14 +1403,14 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   private async sendMessageViaApi(args: any) {
     const { taskId, message } = args;
     const actualTaskId = this.extractTaskId(taskId);
-    
+
     if (!this.config.julesApiKey) {
       throw new Error("JULES_API_KEY is required for API-based messages");
     }
 
     try {
       console.error(`Sending message to session ${actualTaskId} via API...`);
-      
+
       await axios.post(
         `https://jules.googleapis.com/v1alpha/sessions/${actualTaskId}:sendMessage`,
         {
@@ -1413,6 +1451,13 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async createTask(args: any) {
+    if (this.config.julesApiKey) {
+      return await this.createTaskViaApi(args);
+    }
+    return await this.createTaskViaBrowser(args);
+  }
+
+  private async createTaskViaBrowser(args: any) {
     const { description, repository, branch = 'main' } = args;
     const page = await this.getPage();
 
@@ -1434,7 +1479,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
       // Branch selection
       await page.locator("div.branch-select div.header-container > div").click();
-      
+
       // Try to find specific branch or select first available
       const branchOptions = page.locator("div.branch-select swebot-option");
       const branchCount = await branchOptions.count();
@@ -1528,7 +1573,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       // Update local data
       const data = await this.loadTaskData();
       let task = data.tasks.find(t => t.id === actualTaskId);
-      
+
       if (task) {
         task.chatHistory = taskData.chatMessages;
         task.sourceFiles = taskData.sourceFiles;
@@ -1556,6 +1601,13 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async sendMessage(args: any) {
+    if (this.config.julesApiKey) {
+      return await this.sendMessageViaApi(args);
+    }
+    return await this.sendMessageViaBrowser(args);
+  }
+
+  private async sendMessageViaBrowser(args: any) {
     const { taskId, message } = args;
     const actualTaskId = this.extractTaskId(taskId);
     const page = await this.getPage();
@@ -1586,6 +1638,13 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async approvePlan(args: any) {
+    if (this.config.julesApiKey) {
+      return await this.approvePlanViaApi(args);
+    }
+    return await this.approvePlanViaBrowser(args);
+  }
+
+  private async approvePlanViaBrowser(args: any) {
     const { taskId } = args;
     const actualTaskId = this.extractTaskId(taskId);
     const page = await this.getPage();
@@ -1599,7 +1658,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       const approveButton = page.locator("div.approve-plan-container > button");
       if (await approveButton.isVisible()) {
         await approveButton.click();
-        
+
         return {
           content: [
             {
@@ -1624,6 +1683,13 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async resumeTask(args: any) {
+    if (this.config.julesApiKey) {
+      return await this.resumeTaskViaApi(args);
+    }
+    return await this.resumeTaskViaBrowser(args);
+  }
+
+  private async resumeTaskViaBrowser(args: any) {
     const { taskId } = args;
     const actualTaskId = this.extractTaskId(taskId);
     const page = await this.getPage();
@@ -1637,7 +1703,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       const resumeButton = page.locator("div.resume-button-container svg");
       if (await resumeButton.isVisible()) {
         await resumeButton.click();
-        
+
         return {
           content: [
             {
@@ -1662,17 +1728,27 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async listTasks(args: any) {
+    // Prefer CLI for listing tasks if available
+    try {
+      const sessionInfo: any = await this.getSessionInfo({});
+      if (sessionInfo.content[0].text.includes('"hasJulesCli": true')) {
+        return await this.listTasksViaCli(args);
+      }
+    } catch (e) {
+      // Fallback to local data/browser
+    }
+
     const { status = 'all', limit = 10 } = args;
     const data = await this.loadTaskData();
-    
+
     let filteredTasks = data.tasks;
     if (status !== 'all') {
       filteredTasks = data.tasks.filter(task => task.status === status);
     }
-    
+
     const tasks = filteredTasks.slice(0, limit);
-    
-    const taskList = tasks.map(task => 
+
+    const taskList = tasks.map(task =>
       `${task.id} - ${task.title}\n` +
       `  Repository: ${task.repository}\n` +
       `  Status: ${task.status}\n` +
@@ -1690,7 +1766,30 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     };
   }
 
+  private async listTasksViaCli(args: any) {
+    const { status = 'all' } = args;
+    let cliArgs = ["task", "list"];
+    if (status !== 'all') {
+      cliArgs.push("--status", status);
+    }
+
+    const output = await this.runJulesCli(cliArgs);
+    return {
+      content: [{ type: "text", text: `Jules CLI Task List:\n\n${output}` }]
+    };
+  }
+
   private async analyzeCode(args: any) {
+    // Prefer CLI for code analysis if available
+    try {
+      const sessionInfo: any = await this.getSessionInfo({});
+      if (sessionInfo.content[0].text.includes('"hasJulesCli": true')) {
+        return await this.analyzeCodeViaCli(args);
+      }
+    } catch (e) {
+      // Fallback to browser
+    }
+
     const { taskId, includeSourceCode = false } = args;
     const actualTaskId = this.extractTaskId(taskId);
     const page = await this.getPage();
@@ -1737,6 +1836,24 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     } catch (error) {
       throw new Error(`Failed to analyze code: ${error}`);
     }
+  }
+
+  private async analyzeCodeViaCli(args: any) {
+    const { taskId } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+
+    // Attempt to get status and diff via CLI
+    const status = await this.runJulesCli(["task", "status", actualTaskId]);
+    const diff = await this.runJulesCli(["task", "diff", actualTaskId]);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Jules CLI Code Analysis for Task ${actualTaskId}:\n\n--- STATUS ---\n${status}\n\n--- DIFF ---\n${diff}`
+        }
+      ]
+    };
   }
 
   private async bulkCreateTasks(args: any) {
@@ -1796,12 +1913,12 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
     try {
       const cookies = await page.context().cookies();
-      
+
       if (format === 'string') {
-        const cookieString = cookies.map(cookie => 
+        const cookieString = cookies.map(cookie =>
           `${cookie.name}=${cookie.value}; domain=${cookie.domain}; path=${cookie.path}`
         ).join('; ');
-        
+
         return {
           content: [
             {
@@ -1865,6 +1982,18 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async getSessionInfo(args: any) {
+    // Check if CLI is functional
+    let hasJulesCli = false;
+    let resolvedCliPath = "jules";
+    try {
+      resolvedCliPath = await this.resolveJulesCliPath();
+      const execPromise = promisify(exec);
+      await execPromise(`${resolvedCliPath} --version`);
+      hasJulesCli = true;
+    } catch (e) {
+      // CLI not found or errored
+    }
+
     const sessionInfo = {
       sessionMode: this.config.sessionMode,
       hasUserDataDir: !!this.config.userDataDir,
@@ -1872,6 +2001,9 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       hasGoogleAuthCookies: !!this.config.googleAuthCookies,
       hasBrowserbaseConfig: !!(this.config.browserbaseApiKey && this.config.browserbaseProjectId),
       browserbaseSessionId: this.config.browserbaseSessionId,
+      hasJulesApiKey: !!this.config.julesApiKey,
+      hasJulesCli,
+      julesCliPath: resolvedCliPath,
       isHeadless: this.config.headless,
       timeout: this.config.timeout,
       baseUrl: this.config.baseUrl,
@@ -1898,7 +2030,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     let detectedEnv = environment;
     if (environment === 'auto-detect') {
       // Check for cloud environment indicators
-      const isCloud = process.env.NODE_ENV === 'production' || 
+      const isCloud = process.env.NODE_ENV === 'production' ||
                      process.env.SMITHERY_DEPLOYMENT === 'true' ||
                      !hasChrome;
       detectedEnv = isCloud ? 'cloud' : 'local';
@@ -1916,7 +2048,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
 Perfect for cloud deployment! Here's why:
 - ✅ No local browser dependencies
-- ✅ Persistent Google sessions in the cloud  
+- ✅ Persistent Google sessions in the cloud
 - ✅ Works on Smithery and other cloud platforms
 - ✅ Zero local setup required
 
@@ -1956,7 +2088,7 @@ CHROME_USER_DATA_DIR=/Users/[username]/Library/Application Support/Google/Chrome
 
       nextSteps = [
         'Read jules://guides/session-modes for profile path detection',
-        'Set CHROME_USER_DATA_DIR environment variable', 
+        'Set CHROME_USER_DATA_DIR environment variable',
         'Use jules_session_info to verify configuration',
         'Test with jules_create_task to confirm authentication'
       ];
@@ -1968,7 +2100,7 @@ CHROME_USER_DATA_DIR=/Users/[username]/Library/Application Support/Google/Chrome
 
 Best for multi-machine portability:
 - ✅ Works across different computers
-- ✅ Cookies stored as environment variables  
+- ✅ Cookies stored as environment variables
 - ✅ No local browser dependencies
 - ✅ Easy backup and restore
 
@@ -1999,7 +2131,7 @@ Maximum reliability and control:
 
 **Configuration:**
 \`\`\`bash
-SESSION_MODE=persistent  
+SESSION_MODE=persistent
 CHROME_USER_DATA_DIR=~/.jules-mcp/browser-data
 \`\`\``;
 
@@ -2026,7 +2158,7 @@ ${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
 
 ## Quick Commands
 - \`jules_session_info\` - Check current configuration
-- \`jules_screenshot\` - Debug authentication state  
+- \`jules_screenshot\` - Debug authentication state
 - \`jules_create_task\` - Test end-to-end functionality
 
 ## Need Help?
@@ -2052,7 +2184,7 @@ ${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
 
   private async getActiveTasks(): Promise<JulesTask[]> {
     const data = await this.loadTaskData();
-    return data.tasks.filter(task => 
+    return data.tasks.filter(task =>
       task.status === 'in_progress' || task.status === 'pending'
     );
   }
@@ -2060,7 +2192,7 @@ ${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
   async cleanup() {
     // Save cookies before cleanup if in cookies mode
     await this.saveSessionCookies();
-    
+
     if (this.page) {
       await this.page.close();
     }
@@ -2072,7 +2204,7 @@ ${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    
+
     console.error("Google Jules MCP Server running on stdio");
     console.error("Configuration:", {
       headless: this.config.headless,
