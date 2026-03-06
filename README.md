@@ -57,7 +57,7 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 ## Installation
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - TypeScript
 - Git access to repositories you want to manage
 
@@ -100,8 +100,8 @@ Perfect for remote deployments and cloud hosting:
 
 ```bash
 SESSION_MODE=browserbase
-BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds  # Your API key
-BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb  # Your project ID
+BROWSERBASE_API_KEY=your_browserbase_api_key
+BROWSERBASE_PROJECT_ID=your_browserbase_project_id
 BROWSERBASE_SESSION_ID=                    # Optional: use existing session
 ```
 
@@ -339,8 +339,8 @@ The MCP is fully configured for Smithery deployment with comprehensive session m
 #### Option A: Browserbase (Recommended)
 ```bash
 SESSION_MODE=browserbase
-BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds
-BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb
+BROWSERBASE_API_KEY=your_api_key
+BROWSERBASE_PROJECT_ID=your_project_id
 ```
 
 #### Option B: Cookie Authentication
