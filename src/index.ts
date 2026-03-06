@@ -276,6 +276,20 @@ class GoogleJulesMCP {
               }
             },
           },
+          {
+            name: 'jules_audit_report',
+            description: 'Generates a formal audit report for a Jules session, consolidating intent, activity logs, and code outcomes for compliance and verification.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                taskId: {
+                  type: 'string',
+                  description: 'Task ID or URL to audit.',
+                },
+              },
+              required: ['taskId'],
+            },
+          },
           // === ADVANCED TASK OPERATIONS ===
           {
             name: 'jules_analyze_code',
@@ -450,6 +464,8 @@ class GoogleJulesMCP {
             return await this.resumeTask(args);
           case 'jules_check_feedback':
             return await this.checkFeedback(args);
+          case 'jules_audit_report':
+            return await this.generateAuditReport(args);
           case 'jules_delegate_task':
           case 'jules_list_tasks':
             return await this.listTasks(args);
@@ -2341,6 +2357,102 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         }
       ]
     };
+  }
+
+  private async generateAuditReport(args: any) {
+    const { taskId } = args;
+    const actualTaskId = this.extractTaskId(taskId);
+
+    if (!this.config.julesApiKey) {
+      throw new Error("JULES_API_KEY is required for audit reporting.");
+    }
+
+    try {
+      console.error(`Generating audit report for ${actualTaskId}...`);
+
+      // 1. Get Session Summary
+      const sessionResponse = await axios.get(
+        `https://jules.googleapis.com/v1alpha/sessions/${actualTaskId}`,
+        { headers: { "x-goog-api-key": this.config.julesApiKey } }
+      );
+      const session = sessionResponse.data;
+
+      // 2. Get Activities
+      const activitiesResponse = await axios.get(
+        `https://jules.googleapis.com/v1alpha/sessions/${actualTaskId}/activities?pageSize=50`,
+        { headers: { "x-goog-api-key": this.config.julesApiKey } }
+      );
+      const activities = activitiesResponse.data.activities || [];
+
+      // 3. Process Activities for Audit
+      const events = activities.map((a: any) => {
+        let eventType = "UNKNOWN";
+        let detail = "";
+
+        if (a.planGenerated) {
+          eventType = "PLAN_GENERATED";
+          detail = `Plan contains ${a.planGenerated.steps?.length || 0} steps.`;
+        } else if (a.planApproved) {
+          eventType = "PLAN_APPROVED";
+        } else if (a.agentMessaged) {
+          eventType = "JULES_MESSAGE";
+          detail = a.agentMessaged.prompt;
+        } else if (a.userMessaged) {
+          eventType = "USER_MESSAGE";
+          detail = a.userMessaged.prompt;
+        } else if (a.changeSet) {
+          eventType = "CODE_ARTIFACT";
+          detail = `Produced patch: ${a.changeSet.suggestedCommitMessage || "No message"}`;
+        } else if (a.sessionCompleted) {
+          eventType = "COMPLETED";
+        } else if (a.sessionFailed) {
+          eventType = "FAILED";
+          detail = a.sessionFailed.reason || "Unknown failure reason";
+        } else if (a.progressUpdated) {
+          eventType = "PROGRESS";
+          detail = a.progressUpdated.description;
+        }
+
+        return `| ${new Date(a.createTime).toLocaleString()} | ${eventType} | ${detail.replace(/\n/g, ' ')} |`;
+      }).reverse();
+
+      // 4. Identify Code Outcomes
+      const patches = activities.filter((a: any) => a.changeSet).map((a: any) => a.changeSet);
+      const outcomeText = patches.length > 0 ?
+        `✅ Delivered ${patches.length} code checkpoint(s). Final patch salvaged: ${patches[0].suggestedCommitMessage}` :
+        `❌ No code patches recorded in session history.`;
+
+      // 5. Construct Markdown Report
+      const report = [
+        `# 🛡️ Jules Session Audit Report`,
+        `**Session ID**: \`${actualTaskId}\``,
+        `**Title**: ${session.title}`,
+        `**Final State**: \`${session.state}\``,
+        `**Repository**: ${session.sourceContext?.source || "Unknown"}`,
+        `**Generated At**: ${new Date().toLocaleString()}`,
+        ``,
+        `## 📝 Intent Statement (Initial Prompt)`,
+        `> ${session.prompt || "No initial prompt record available."}`,
+        ``,
+        `## 🔄 Delivery Activity Log`,
+        `| Timestamp | Event Type | Details |`,
+        `| :--- | :--- | :--- |`,
+        ...events,
+        ``,
+        `## 🏁 Verification & Outcome`,
+        outcomeText,
+        ``,
+        `**Audit Conclusion**: ${session.state === 'COMPLETED' ? "Successfully Delivered" : "Incomplete or Failed Delivery"}`,
+        `---`,
+        `*Report generated via Google Jules MCP Audit Tier.*`
+      ].join('\n');
+
+      return {
+        content: [{ type: "text", text: report }]
+      };
+    } catch (error: any) {
+      throw new Error(`Audit Report Generation Failed: ${error.message}`);
+    }
   }
 
   private async bulkCreateTasks(args: any) {

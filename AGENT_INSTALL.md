@@ -68,6 +68,7 @@ The most efficient way for an agent to use this server is via **Code Delegation*
 
 - **`jules_check_feedback`**: Run this periodically to see if Jules is blocked in `AWAITING_USER_FEEDBACK`. It retrieves the exact question from Jules.
 - **`jules_analyze_code`**: Use `returnPatch: true` to salvage a unified Git patch from any session (even failed ones).
+- **`jules_audit_report`**: Generates a consolidated Markdown audit report including intent, activity logs, and code outcomes for formal verification.
 - **`jules_list_tasks`**: Filters by the current repository automatically across all branches.
 
 ## ⚠️ Important Note
