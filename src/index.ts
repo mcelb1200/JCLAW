@@ -1773,57 +1773,6 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     return await this.sendMessageViaApi({ taskId, message });
   }
 
-  // Tool implementations
-  private async sendMessageViaApi(args: any) {
-    const { taskId, message } = args;
-    const actualTaskId = this.extractTaskId(taskId);
-
-    if (!this.config.julesApiKey) {
-      throw new Error("JULES_API_KEY is required for API-based messages");
-    }
-
-    try {
-      console.error(`Sending message to session ${actualTaskId} via API...`);
-
-      await axios.post(
-        `https://jules.googleapis.com/v1alpha/sessions/${actualTaskId}:sendMessage`,
-        {
-          prompt: message
-        },
-        {
-          headers: {
-            "x-goog-api-key": this.config.julesApiKey,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Message sent successfully to Jules session ${actualTaskId} via API.`
-          }
-        ]
-      };
-    } catch (error: any) {
-      const errorDetail = error.response?.data ? JSON.stringify(error.response.data) : error.message;
-      throw new Error(`API Message Sending Failed: ${errorDetail}`);
-    }
-  }
-
-  private async approvePlanViaApi(args: any) {
-    const { taskId } = args;
-    const message = "Approved. Please proceed with the plan.";
-    return await this.sendMessageViaApi({ taskId, message });
-  }
-
-  private async resumeTaskViaApi(args: any) {
-    const { taskId } = args;
-    const message = "Please resume the task.";
-    return await this.sendMessageViaApi({ taskId, message });
-  }
-
   private async createTask(args: any) {
     // PREFERRED: Jules CLI
     try {
