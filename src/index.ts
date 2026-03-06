@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// @jules: Create a full suite of unit and integration tests for this MCP server.
+// Use a modern testing framework like Jest or Vitest.
+// Ensure coverage for CLI, API, and Browser interaction tiers.
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
