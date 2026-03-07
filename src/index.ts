@@ -1484,6 +1484,34 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     }
   }
 
+  private async runGhCommand(args: string[]): Promise<string> {
+    const execPromise = promisify(exec);
+    const command = `gh ${args.join(" ")}`;
+    try {
+      console.error(`Executing GH command: ${command}`);
+      const { stdout } = await execPromise(command);
+      return stdout.trim();
+    } catch (error: any) {
+      throw new Error(`GH Error: ${error.message}`);
+    }
+  }
+
+  private async verifyRemoteInstructionFile(repository: string, branch: string, filePath: string): Promise<boolean> {
+    try {
+      console.error(`Verifying remote existence: ${repository}/${branch}/${filePath}`);
+      // Use gh api to check contents
+      const result = await this.runGhCommand([
+        "api",
+        `/repos/${repository}/contents/${filePath}?ref=${branch}`,
+        "--jq",
+        ".name"
+      ]);
+      return !!result;
+    } catch (e) {
+      return false;
+    }
+  }
+
   private async detectGitContext() {
     try {
       // Get remote URL to extract owner/repo
@@ -1624,6 +1652,25 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     }
 
     results.push(`ℹ Delegation Strategy: ${strategy}`);
+
+    // Step 2.5: Remote Consistency Verification (Brain requirement)
+    if (instructionFileToMove || (strategy.includes("instruction file"))) {
+      const remotePath = instructionFileToMove || instructionFile;
+      if (remotePath) {
+        results.push(`⏳ Verifying remote consistency for ${remotePath}...`);
+        const isRemote = await this.verifyRemoteInstructionFile(repository, branch, remotePath);
+        if (isRemote) {
+          results.push(`✓ Remote consistency confirmed via GH API.`);
+        } else {
+          results.push(`⚠ WARNING: Instruction file ${remotePath} NOT found on remote branch '${branch}'. Jules may fail to initiate.`);
+          // Try a last-ditch push if we haven't already
+          if (!pushFirst) {
+             results.push(`ℹ Attempting last-ditch push...`);
+             try { await this.runGitCommand(["push", "origin", branch]); } catch (e) {}
+          }
+        }
+      }
+    }
 
     // Step 3: Optional Ignore Handling (JCLAW Prioritization)
     let jclawIgnore: string[] = [];
