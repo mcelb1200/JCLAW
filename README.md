@@ -78,7 +78,7 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 
 ```bash
 # Clone the repository
-git clone https://github.com/samihalawa/google-jules-mcp.git
+git clone https://github.com/mcelb1200/google-jules-mcp.git
 cd google-jules-mcp
 
 # Install dependencies
