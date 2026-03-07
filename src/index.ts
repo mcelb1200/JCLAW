@@ -397,7 +397,12 @@ export class JCLAW {
             description: 'Get current session configuration and authentication status',
             inputSchema: {
               type: 'object',
-              properties: {},
+              properties: {
+                dummy: {
+                  type: 'string',
+                  description: 'Dummy parameter to prevent empty properties object for Gemini 400 error'
+                }
+              },
             },
           },
           {
