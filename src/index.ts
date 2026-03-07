@@ -263,6 +263,10 @@ export class GoogleJulesMCP {
                   type: 'string',
                   description: 'Git branch. Auto-detected if omitted.',
                 },
+                taskId: {
+                  type: 'string',
+                  description: 'Unique identifier for this sub-task (e.g., feature-part-1). Allows concurrent tasks on the same branch.',
+                },
                 marker: {
                   type: 'string',
                   description: 'Marker string to look for in code (default: @jules)',
@@ -1465,7 +1469,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
   }
 
   private async initiateDelegation(args: any) {
-    let { repository, branch, marker = "@jules", pushFirst = true, instruction, instructionFile } = args;
+    let { repository, branch, taskId, marker = "@jules", pushFirst = true, instruction, instructionFile } = args;
 
     // Auto-detect context if missing
     if (!repository || !branch) {
@@ -1479,23 +1483,26 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     }
 
     let results = [];
+    let activeTaskId = taskId || branch || "default";
 
     // Step 1: Deduplication Check (Prevent Redundant Tasks)
     if (this.config.julesApiKey) {
       try {
         const existingSessions = await this.listSessionsViaApi();
+        // Match by repo, branch AND taskId (embedded in title or prompt)
         const activeDuplicate = existingSessions.find(s => {
           const repoMatch = s.sourceContext?.source?.toLowerCase() === `sources/github/${repository}`.toLowerCase();
           const branchMatch = s.sourceContext?.githubRepoContext?.startingBranch === branch;
+          const taskIdMatch = taskId ? (s.title?.includes(`[${taskId}]`) || s.prompt?.includes(`[${taskId}]`)) : true;
           const isActive = ['QUEUED', 'CREATING', 'RUNNING', 'AWAITING_USER_FEEDBACK', 'AWAITING_PLAN_APPROVAL'].includes(s.state);
-          return repoMatch && branchMatch && isActive;
+          return repoMatch && branchMatch && taskIdMatch && isActive;
         });
 
         if (activeDuplicate) {
           return {
             content: [{
               type: "text",
-              text: `⚠ Redundancy Canceled: A Jules session (${activeDuplicate.name.split('/').pop()}) is already ACTIVE for ${repository} on branch '${branch}' (State: ${activeDuplicate.state}).\n\nPlease use 'jules_get_task' or 'jules_check_feedback' to interact with the existing session.`
+              text: `⚠ Concurrency Intercept: A Jules session (${activeDuplicate.name.split('/').pop()}) for task '${activeTaskId}' is already ACTIVE on branch '${branch}'.\n\nTo run concurrent sessions, provide a unique 'taskId' to the tool.`
             }]
           };
         }
@@ -1537,28 +1544,27 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
     // 3. Auto-detect from convention (Active or Backlog)
     let instructionFileToMove: string | undefined;
-    if (!finalPrompt && branch) {
-      const branchesToTry = [
-        branch,
-        branch.replace(/\//g, "-"), // feature/foo -> feature-foo
-        branch.split("/").pop() || branch
+    if (!finalPrompt && (taskId || branch)) {
+      const searchTerms = taskId ? [taskId] : [
+        branch!,
+        branch!.replace(/\//g, "-"),
+        branch!.split("/").pop() || "task"
       ];
 
       const searchConfigs = [
         { dir: ".jules/active", move: false },
-        { dir: ".jules/backlog", move: true },
-        { dir: ".", move: false }
+        { dir: ".jules/backlog", move: true }
       ];
 
       for (const config of searchConfigs) {
-        const potentialFiles = config.dir === "." ? ["instructions.md"] : branchesToTry.map(b => `${config.dir}/${b}.md`);
-
-        for (const p of potentialFiles) {
+        for (const term of searchTerms) {
+          const p = `${config.dir}/${term}.md`;
           try {
             const fullPath = path.resolve(process.cwd(), p);
             const content = await fs.readFile(fullPath, "utf8");
             if (content && content.trim().length > 0) {
               finalPrompt = content;
+              if (!taskId) activeTaskId = term;
               strategy = `auto-detected in ${config.dir}: ${p}`;
               if (config.move) instructionFileToMove = p;
               break;
@@ -1566,6 +1572,15 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
           } catch (e) {}
         }
         if (finalPrompt) break;
+      }
+
+      // Fallback for instructions.md
+      if (!finalPrompt) {
+        try {
+          const fullPath = path.resolve(process.cwd(), "instructions.md");
+          finalPrompt = await fs.readFile(fullPath, "utf8");
+          strategy = "fallback to instructions.md";
+        } catch (e) {}
       }
     }
 
@@ -1577,12 +1592,17 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
     results.push(`ℹ Delegation Strategy: ${strategy}`);
 
+    // Step 4: Final Prompt Prep (Inject Task Identifier)
+    const decoratedPrompt = taskId ? `Task: [${taskId}]\n\n${finalPrompt}` : finalPrompt;
+    const taskTitle = taskId ? `${activeTaskId} [${taskId}]` : activeTaskId;
+
     try {
       let taskResult;
       // REST API is more reliable for long prompts (Muscles pattern)
       if (this.config.julesApiKey) {
         taskResult = await this.createTaskViaApi({
-          description: finalPrompt,
+          description: decoratedPrompt,
+          title: taskTitle,
           repository,
           branch,
           type: "delegated",
