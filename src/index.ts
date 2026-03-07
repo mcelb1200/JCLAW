@@ -2625,8 +2625,25 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         `*Report generated via Google Jules MCP Audit Tier.*`
       ].join('\n');
 
+      // 7. Save to local audit log (Brain pattern)
+      let localPath = "";
+      try {
+        const auditDir = path.resolve(process.cwd(), ".jules/audit");
+        await fs.mkdir(auditDir, { recursive: true });
+        const fileName = `${actualTaskId}.audit.md`;
+        const auditFile = path.join(auditDir, fileName);
+        await fs.writeFile(auditFile, report, "utf8");
+        localPath = `.jules/audit/${fileName}`;
+        console.error(`Audit report saved to ${auditFile}`);
+      } catch (e: any) {
+        console.error(`Failed to save audit report locally: ${e.message}`);
+      }
+
       return {
-        content: [{ type: "text", text: report }]
+        content: [{
+          type: "text",
+          text: (localPath ? `✅ Audit report recorded to ${localPath}\n\n` : "") + report
+        }]
       };
     } catch (error: any) {
       throw new Error(`Audit Report Generation Failed: ${error.message}`);
