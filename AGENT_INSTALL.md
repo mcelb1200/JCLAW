@@ -66,7 +66,7 @@ Before using `jules_delegate_task`, ensure the following directory structure exi
 .jules/
 ├── backlog/   # Pending instruction files (e.g. feature-A.md)
 ├── active/    # Currently executing instructions
-├── audit/     # Recorded audit reports ([sessionID].audit.md)
+├── audit/     # Recorded audit reports ([sessionID].jclaw.md)
 └── logs/      # Local execution logs
 ```
 
@@ -95,7 +95,7 @@ The `jules_delegate_task` tool uses a **Tiered Logic** to find Jules' instructio
   - `incomplete`: Archives as `.incomplete.md` and generates a new `.jules/backlog/` task for residual work.
 - **`jules_check_feedback`**: Run this periodically to see if Jules is blocked in `AWAITING_USER_FEEDBACK`. It retrieves the exact question from Jules.
 - **`jules_analyze_code`**: Use `returnPatch: true` to salvage a unified Git patch from any session (even failed ones).
-- **`jules_audit_report`**: Generates a consolidated Markdown audit report including intent, activity logs, code outcomes, and most recent code review reasoning.
+- **`jules_audit_report`**: Generates a consolidated Markdown audit report (.jclaw.md) including intent, activity logs, code outcomes, and most recent code review reasoning.
 - **`jules_code_review`**: Specifically extracts the last code review/merge assessment from Jules sessions for quick auditing.
 - **`jules_list_tasks`**: Filters by the current repository automatically across all branches.
 

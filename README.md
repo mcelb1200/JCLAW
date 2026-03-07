@@ -13,7 +13,7 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 - **Brain/Muscles Architecture**: Explicitly designed for the "Lobster" pattern where the agent (Brain) orchestrates Jules (Muscles) via named contracts.
 - **Contract-Based Sub-Tasking**: Run multiple concurrent sessions on the same branch by using unique `taskId` values.
 - **Automated Workflow**: Instruction files automatically move from `.jules/backlog/` to `.jules/active/` upon delegation.
-- **Local Audit Journaling**: Audit reports are automatically persisted to `.jules/audit/` for repository-wide traceability.
+- **Local Audit Journaling**: Audit reports are automatically persisted to `.jules/audit/` as `.jclaw.md` files for repository-wide traceability.
 - **Tiered Discovery**: Smart fallback from explicit instruction files to codebase markers (`@jules`).
 
 ### 🎯 **Task Management**

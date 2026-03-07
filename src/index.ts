@@ -1669,7 +1669,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         content: [
           {
             type: "text",
-            text: `Delegation Results:\n\n${results.join("\n")}\n\nJules is now operating on your plan.`
+            text: `Results [Delegation]:\n${results.join("\n")}\n\n--- 🦞 JCLAW Conclusion ---\nThe pincer has snapped shut on the target branch. Jules has been unleashed into the Binary Reef.`
           }
         ]
       };
@@ -2659,7 +2659,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       try {
         const auditDir = path.resolve(process.cwd(), ".jules/audit");
         await fs.mkdir(auditDir, { recursive: true });
-        const fileName = `${actualTaskId}.audit.md`;
+        const fileName = `${actualTaskId}.jclaw.md`;
         const auditFile = path.join(auditDir, fileName);
         await fs.writeFile(auditFile, report, "utf8");
         localPath = `.jules/audit/${fileName}`;
@@ -2671,7 +2671,9 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       return {
         content: [{
           type: "text",
-          text: (localPath ? `✅ Audit report recorded to ${localPath}\n\n` : "") + report
+          text: (localPath ? `✅ Audit recorded: ${localPath}\n\n` : "") +
+                report +
+                "\n\n--- 🦞 JCLAW Conclusion ---\nThe reef is secure; this session's history is now safely encased in a JCLAW audit shell."
         }]
       };
     } catch (error: any) {
@@ -2754,7 +2756,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
     return {
       content: [{
         type: "text",
-        text: `Conclusion Results for Task ${actualTaskId}:\n\n${results.join("\n")}`
+        text: `Results [Task ${actualTaskId}]:\n${results.join("\n")}\n\n--- 🦞 JCLAW Conclusion ---\nThe pincer has released. The workflow has been successfully molted into its next state.`
       }]
     };
   }
