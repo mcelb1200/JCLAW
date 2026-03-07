@@ -283,6 +283,10 @@ export class JCLAW {
                   type: 'string',
                   description: 'Path to a markdown file containing detailed instructions (e.g., .jules/active/task.md).',
                 },
+                respectIgnoreFiles: {
+                  type: 'boolean',
+                  description: 'Whether to respect .jclaw-ignore, .gitignore, and standard ignore patterns.',
+                },
               }
             },
           },
@@ -1621,8 +1625,28 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
     results.push(`ℹ Delegation Strategy: ${strategy}`);
 
-    // Step 4: Final Prompt Prep (Inject Task Identifier)
-    const decoratedPrompt = taskId ? `Task: [${taskId}]\n\n${finalPrompt}` : finalPrompt;
+    // Step 3: Optional Ignore Handling
+    let ignorePatterns = [];
+    if (args.respectIgnoreFiles !== false) {
+      const ignoreFiles = [".jclaw-ignore", ".gitignore", ".cursorignore", ".dockerignore"];
+      for (const f of ignoreFiles) {
+        try {
+          const content = await fs.readFile(path.resolve(process.cwd(), f), "utf8");
+          const lines = content.split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"));
+          if (lines.length > 0) {
+            ignorePatterns.push(...lines);
+            results.push(`✓ Including ignore rules from ${f}`);
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Step 4: Final Prompt Prep (Inject Task Identifier and Ignores)
+    let ignoreInstruction = ignorePatterns.length > 0
+      ? `\n\n### 🛡️ Restricted Files (DO NOT MODIFY):\n${ignorePatterns.map(p => `- ${p}`).join("\n")}`
+      : "";
+
+    const decoratedPrompt = (taskId ? `Task: [${taskId}]\n\n${finalPrompt}` : finalPrompt) + ignoreInstruction;
     const taskTitle = taskId ? `${activeTaskId} [${taskId}]` : activeTaskId;
 
     try {
@@ -1669,7 +1693,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         content: [
           {
             type: "text",
-            text: `Results [Delegation]:\n${results.join("\n")}\n\n--- 🦞 JCLAW Conclusion ---\nThe pincer has snapped shut on the target branch. Jules has been unleashed into the Binary Reef.`
+            text: `Results [Delegation]:\n${results.join("\n")}\n\n--- 🦞 JCLAW Conclusion ---\nThe pincer has snapped (snap!) shut on the target branch. Jules has been unleashed into the Binary Reef.`
           }
         ]
       };
@@ -3018,9 +3042,14 @@ Perfect for cloud deployment! Here's why:
 **Configuration:**
 \`\`\`bash
 SESSION_MODE=browserbase
-BROWSERBASE_API_KEY=bb_live_g3i-b4WPFh__E3cErKE5rO-jWds
-BROWSERBASE_PROJECT_ID=d718e85f-be7b-497d-9123-b1bbf798f1bb
-\`\`\``;
+BROWSERBASE_API_KEY=your_key
+BROWSERBASE_PROJECT_ID=your_id
+\`\`\`
+
+🌊 **DEEP SEA MODE (LORE)**
+In the deepest trenches of technical debt, the Crimson Orchestrator (JCLAW) uses its heavy brass gears to guide the relentless Muscles (Jules). By delegating tasks to Jules, you aren't just refactoring code—you're releasing a force of nature into the Binary Reef. The recursive nature of JCLAW ensures that every molt (refactor) results in a stronger, sleeker codebase.
+
+*Welcome to the Abyss. The Pincer is ready.*`;
 
       nextSteps = [
         'Read jules://prompts/browserbase-setup for detailed setup',

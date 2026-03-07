@@ -15,6 +15,7 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 - **Automated Workflow**: Instruction files automatically move from `.jules/backlog/` to `.jules/active/` upon delegation.
 - **Local Audit Journaling**: Audit reports are automatically persisted to `.jules/audit/` as `.jclaw.md` files for repository-wide traceability.
 - **Tiered Discovery**: Smart fallback from explicit instruction files to codebase markers (`@jules`).
+- **Ignore File Support**: Automatically respects `.jclaw-ignore`, `.gitignore`, and other standard ignore files to protect sensitive reef areas.
 
 ### 🎯 **Task Management**
 - **Create Tasks**: Automatically create Jules tasks with repository and description
