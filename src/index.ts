@@ -78,7 +78,7 @@ interface SourceFile {
   status: 'modified' | 'created' | 'deleted' | 'unchanged';
 }
 
-export class GoogleJulesMCP {
+export class JCLAW {
   public server: Server;
   private browser: Browser | null = null;
   private page: Page | null = null;
@@ -90,7 +90,7 @@ export class GoogleJulesMCP {
       headless: process.env.HEADLESS !== 'false',
       timeout: parseInt(process.env.TIMEOUT || '30000'),
       debug: process.env.DEBUG === 'true',
-      dataPath: process.env.JULES_DATA_PATH || path.join(os.homedir(), '.jules-mcp', 'data.json'),
+      dataPath: process.env.JULES_DATA_PATH || path.join(os.homedir(), '.jclaw', 'data.json'),
       baseUrl: 'https://jules.google.com',
       userDataDir: process.env.CHROME_USER_DATA_DIR,
       useExistingSession: process.env.USE_EXISTING_SESSION === 'true',
@@ -112,7 +112,7 @@ export class GoogleJulesMCP {
 
     this.server = new Server(
       {
-        name: 'google-jules-mcp',
+        name: 'jclaw',
         version: '1.0.0',
       },
       {
@@ -874,7 +874,7 @@ Once authenticated:
 
 ### SMITHERY DEPLOYMENT:
 For Smithery users:
-1. Fork the google-jules-mcp repository
+1. Fork the JCLAW repository
 2. Deploy to Smithery with Browserbase environment variables
 3. The MCP will automatically handle remote browser management
 4. Access from any Claude Code instance globally
@@ -963,13 +963,13 @@ CHROME_USER_DATA_DIR=/path/to/chrome/profile
 \`\`\`
 SESSION_MODE=cookies
 GOOGLE_AUTH_COOKIES="session_id=...; domain=.google.com"
-COOKIES_PATH=~/.jules-mcp/cookies.json
+COOKIES_PATH=~/.jclaw/cookies.json
 \`\`\`
 
 **Persistent:**
 \`\`\`
 SESSION_MODE=persistent
-CHROME_USER_DATA_DIR=~/.jules-mcp/browser-data
+CHROME_USER_DATA_DIR=~/.jclaw/browser-data
 \`\`\`
 
 ### VALIDATION CHECKLIST:
@@ -1295,7 +1295,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         const pages = context.pages();
         this.page = pages.length > 0 ? pages[0] : await context.newPage();
       } else if (this.config.sessionMode === 'persistent') {
-        const persistentDir = this.config.userDataDir || path.join(os.homedir(), '.jules-mcp', 'browser-data');
+        const persistentDir = this.config.userDataDir || path.join(os.homedir(), '.jclaw', 'browser-data');
         const context = await chromium.launchPersistentContext(persistentDir, {
           headless: this.config.headless,
           timeout: this.config.timeout,
@@ -3069,7 +3069,7 @@ Best for multi-machine portability:
 \`\`\`bash
 SESSION_MODE=cookies
 GOOGLE_AUTH_COOKIES="session_id=abc123; domain=.google.com; auth_token=xyz789; domain=.google.com"
-COOKIES_PATH=~/.jules-mcp/cookies.json
+COOKIES_PATH=~/.jclaw/cookies.json
 \`\`\``;
 
       nextSteps = [
@@ -3093,7 +3093,7 @@ Maximum reliability and control:
 **Configuration:**
 \`\`\`bash
 SESSION_MODE=persistent
-CHROME_USER_DATA_DIR=~/.jules-mcp/browser-data
+CHROME_USER_DATA_DIR=~/.jclaw/browser-data
 \`\`\``;
 
       nextSteps = [
@@ -3191,7 +3191,7 @@ if (process.env.NODE_ENV !== 'test') {
   });
 
   // Start the server
-  const server = new GoogleJulesMCP();
+  const server = new JCLAW();
   server.run().catch((error) => {
     console.error('Failed to start server:', error);
     process.exit(1);

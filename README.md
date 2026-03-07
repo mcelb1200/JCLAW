@@ -1,6 +1,6 @@
-# Google Jules MCP
+# JCLAW (Jules Crustacean Logic & Automated Workflow)
 
-A Model Context Protocol (MCP) server for automating Google Jules - the AI coding assistant. This MCP enables seamless integration with Jules for task creation, code review automation, repository management, and AI-powered development workflows.
+A Model Context Protocol (MCP) server for automating Google Jules - the AI coding assistant. JCLAW enables the "Lobster Pattern" of architecture, providing high-level reasoning (Brain) with autonomous remote execution (Muscles).
 
 ## Features
 
@@ -78,8 +78,8 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 
 ```bash
 # Clone the repository
-git clone https://github.com/mcelb1200/google-jules-mcp.git
-cd google-jules-mcp
+git clone https://github.com/mcelb1200/JCLAW.git
+cd JCLAW
 
 # Install dependencies
 npm install
@@ -125,7 +125,7 @@ Extract cookies from your browser and set them as environment variable:
 ```bash
 SESSION_MODE=cookies
 GOOGLE_AUTH_COOKIES="session_id=abc123; domain=.google.com; auth_token=xyz789; domain=.google.com"
-COOKIES_PATH=~/.jules-mcp/cookies.json     # File to save/load cookies
+COOKIES_PATH=~/.jclaw/cookies.json     # File to save/load cookies
 ```
 
 #### 🌍 **Chrome Profile (Local Development)**
@@ -143,7 +143,7 @@ Save browser data to a specific directory:
 
 ```bash
 SESSION_MODE=persistent
-CHROME_USER_DATA_DIR=~/.jules-mcp/browser-data  # Custom browser data directory
+CHROME_USER_DATA_DIR=~/.jclaw/browser-data  # Custom browser data directory
 ```
 
 ### How to Get Google Authentication Cookies
@@ -183,13 +183,13 @@ BROWSERBASE_SESSION_ID=optional_existing_session
 
 # Cookie Authentication
 GOOGLE_AUTH_COOKIES="session_id=abc; domain=.google.com"
-COOKIES_PATH=~/.jules-mcp/cookies.json
+COOKIES_PATH=~/.jclaw/cookies.json
 
 # Chrome Profile (local development)
 CHROME_USER_DATA_DIR=/path/to/chrome/profile
 
 # Data Storage
-JULES_DATA_PATH=~/.jules-mcp/data.json  # Custom data storage path
+JULES_DATA_PATH=~/.jclaw/data.json  # Custom data storage path
 ```
 
 ## Usage Examples
@@ -325,9 +325,9 @@ The MCP includes templates for common development scenarios:
 ```json
 {
   "mcpServers": {
-    "google-jules-mcp": {
+    "JCLAW": {
       "command": "node",
-      "args": ["path/to/google-jules-mcp/dist/index.js"],
+      "args": ["path/to/JCLAW/dist/index.js"],
       "env": {
         "HEADLESS": "true",
         "SESSION_MODE": "cookies",
@@ -408,7 +408,7 @@ This will:
 ### Project Structure
 
 ```
-google-jules-mcp/
+JCLAW/
 ├── src/
 │   └── index.ts          # Main MCP server implementation
 ├── docs/

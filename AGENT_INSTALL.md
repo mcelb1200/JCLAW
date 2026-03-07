@@ -1,4 +1,4 @@
-# 🤖 AI Agent Setup Guide: Google Jules MCP
+# 🤖 AI Agent Setup Guide: JCLAW (Jules Crustacean Logic & Automated Workflow)
 
 This guide is designed for an AI agent (like Antigravity, Claude, or Cursor) to quickly install, configure, and utilize this MCP server in a new environment.
 
@@ -8,8 +8,8 @@ Run these commands to clone, build, and prepare the server:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/mcelb1200/google-jules-mcp.git
-cd google-jules-mcp
+git clone https://github.com/mcelb1200/JCLAW.git
+cd JCLAW
 
 # 2. Install dependencies
 npm install
@@ -39,9 +39,9 @@ Add this entry to your `mcpConfig` (e.g., `claude_desktop_config.json` or `.curs
 ```json
 {
   "mcpServers": {
-    "google-jules-mcp": {
+    "JCLAW": {
       "command": "node",
-      "args": ["/absolute/path/to/google-jules-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/JCLAW/dist/index.js"],
       "env": {
         "JULES_API_KEY": "your_api_key_here",
         "JULES_CLI_PATH": "jules",
