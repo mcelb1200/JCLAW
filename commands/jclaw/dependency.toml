@@ -1,0 +1,2 @@
+description = "Visualize the status of tasks and their dependencies across backlog, active, and archive tiers."
+prompt = "Use the jules_dependency_status tool to build and show the current task dependency tree."

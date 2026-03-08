@@ -13,11 +13,14 @@
     }
   },
   "commands": {
-    "jules:delegate": "commands/jules/delegate.toml",
-    "jules:status": "commands/jules/status.toml",
-    "jules:audit": "commands/jules/audit.toml",
-    "jules:conclude": "commands/jules/conclude.toml",
-    "jules:review": "commands/jules/review.toml",
-    "jules:feedback": "commands/jules/feedback.toml"
+    "jclaw.delegate": "commands/jclaw/delegate.toml",
+    "jclaw.status": "commands/jclaw/status.toml",
+    "jclaw.audit": "commands/jclaw/audit.toml",
+    "jclaw.conclude": "commands/jclaw/conclude.toml",
+    "jclaw.review": "commands/jclaw/review.toml",
+    "jclaw.feedback": "commands/jclaw/feedback.toml",
+    "jclaw.dependency": "commands/jclaw/dependency.toml",
+    "jclaw.resolve": "commands/jclaw/resolve.toml",
+    "jclaw.sync": "commands/jclaw/sync.toml"
   }
 }

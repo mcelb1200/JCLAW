@@ -22,7 +22,11 @@ These scripts are designed for token-efficient, long-running orchestration by an
 - [**Check Feedback**](check_feedback.md): Scan tasks for `AWAITING_USER_FEEDBACK` status.
 - [**Approve Plan**](approve_plan.md): Approve a generated execution plan.
 - [**Resume Task**](resume_task.md): Resume a paused session.
+- [**Dependency Status**](dependency_status.md): Visualize the status of tasks and their dependencies.
+- [**Resolve Conflicts**](resolve_conflicts.md): Automated Merge Conflict Resolution Engine.
+- [**Sync GitHub Sessions**](sync_gh_sessions.md): Discovers JCLAW sessions from GitHub PR metadata.
 - [**Audit Report**](audit_report.md): Generate a formal audit report for a session.
+- [**GH-JCLAW Extension**](gh-jclaw.md): Prototype for the `gh jclaw` command, integrating JCLAW with the GitHub CLI.
 - [**Conclude Task**](conclude_task.md): Finalize a session (completed or incomplete) and archive instructions.
 - [**Code Review**](code_review.md): Extract the latest code review from a session's history.
 - [**Auto Review**](auto_review.md): Programmatically lint, auto-fix, and autonomously retry code quality feedback.

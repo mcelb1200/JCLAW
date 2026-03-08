@@ -49,26 +49,21 @@ A Model Context Protocol (MCP) server for automating Google Jules - the AI codin
 - **Remote Browser Support**: Use Browserbase for cloud deployments
 - **Cross-Platform**: Works locally and in cloud environments
 
-## Available Tools
+## Available Tools (Slash Commands)
 
-| Tool | Description |
-| `jules_cli` | Execute a command using the Jules CLI for token efficiency |
-|------|-------------|
-| **Task Management** ||
-| `jules_create_task` | Create a new Jules task with repository and description |
-| `jules_get_task` | Get detailed information about a specific task |
-| `jules_send_message` | Send messages/instructions to Jules in active tasks |
-| `jules_approve_plan` | Approve Jules execution plans |
-| `jules_resume_task` | Resume paused tasks |
-| `jules_list_tasks` | List tasks with filtering options |
-| `jules_analyze_code` | Analyze code changes and project structure |
-| `jules_bulk_create_tasks` | Create multiple tasks from a list |
-| **Session & Authentication** ||
-| `jules_get_cookies` | Get current browser cookies for session persistence |
-| `jules_set_cookies` | Set browser cookies from string/JSON for authentication |
-| `jules_session_info` | Get current session configuration and status |
-| **Debugging** ||
-| `jules_screenshot` | Take debugging screenshots |
+JCLAW provides a set of slash commands for the Gemini CLI to orchestrate Jules sessions using the **Lobster Pattern**:
+
+| Command | Description |
+| :--- | :--- |
+| `/jclaw.delegate` | Delegate a task to Jules using `@jules` markers or `.jules/` instructions. |
+| `/jclaw.status` | List currently active Jules tasks and their progress. |
+| `/jclaw.audit` | Generate a comprehensive audit report with CI telemetry integration. |
+| `/jclaw.review` | Extract the most recent code review reasoning from a Jules session. |
+| `/jclaw.feedback` | Check if any Jules tasks are awaiting user feedback. |
+| `/jclaw.conclude` | Finalize a Jules session (status: `completed` or `incomplete`). |
+| `/jclaw.dependency` | Visualize task status and dependency tracking across tiers. |
+| `/jclaw.resolve` | Scaffold a conflict resolution task for Jules when branches diverge. |
+| `/jclaw.sync` | Discover and sync JCLAW session metadata from GitHub PRs. |
 
 ## Installation
 
@@ -345,9 +340,9 @@ JULES_DATA_PATH=~/.jclaw/data.json  # Custom data storage path
 
 The server provides useful resources for context:
 
-- `jules://schemas/task` - Complete task data model
-- `jules://current/active-tasks` - Live list of active tasks
-- `jules://templates/common-tasks` - Template examples for common development tasks
+- `jclaw://schemas/task` - Complete task data model
+- `jclaw://current/active-tasks` - Live list of active tasks
+- `jclaw://templates/common-tasks` - Template examples for common development tasks
 
 ## Common Task Templates
 

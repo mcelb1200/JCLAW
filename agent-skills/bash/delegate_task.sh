@@ -10,14 +10,28 @@ TASK_ID=$3
 PROMPT=$4
 PUSH_FIRST=${5:-true}
 MARKER=${6:-"@jules"}
+DEPENDS_ON=$7 # Comma-separated list of task IDs
 
 if [ -z "$REPOSITORY" ] || [ -z "$BRANCH" ]; then
-    echo "Usage: $0 [repository] [branch] [taskId] [prompt] [pushFirst (true|false)] [marker]"
-    echo "Example: $0 google/jules main task123"
+    echo "Usage: $0 [repository] [branch] [taskId] [prompt] [pushFirst (true|false)] [marker] [dependsOn]"
+    echo "Example: $0 google/jules main task123 \"Fix bug\" true @jules task121,task122"
     exit 1
 fi
 
 echo -e "${YELLOW}=== Delegating Task to Jules ===${NC}"
+
+# Pre-flight check: Dependencies (Brain requirement)
+if [ -n "$DEPENDS_ON" ]; then
+    echo -e "ℹ ${YELLOW}Checking dependencies: $DEPENDS_ON${NC}"
+    IFS=',' read -ra ADDR <<< "$DEPENDS_ON"
+    for dep in "${ADDR[@]}"; do
+        if [ ! -f ".jules/archive/$dep.md" ]; then
+            echo -e "${RED}Error: Dependency '$dep' is not yet archived (incomplete). Delegation deferred.${NC}"
+            exit 1
+        fi
+    done
+    echo -e "${GREEN}✓ All dependencies met.${NC}"
+fi
 
 # Pre-flight check: Repository structure
 if [[ "$REPOSITORY" != */* ]]; then
@@ -84,6 +98,10 @@ if [ "$TASK_ID_RESP" != "null" ] && [ -n "$TASK_ID_RESP" ]; then
     echo -e "${GREEN}✓ Task created successfully.${NC}"
     echo -e "Session ID: ${YELLOW}$TASK_ID_RESP${NC}"
     echo -e "Title: $TITLE"
+
+    # Sync to PR (persistence tier)
+    source "$DIR/github_integration.sh"
+    sync_session_to_pr "$BRANCH" "$REPOSITORY" "$TASK_ID" "$TASK_ID_RESP"
 else
     echo -e "${RED}✗ Failed to create task.${NC}"
     echo "$RESPONSE" | jq '.'

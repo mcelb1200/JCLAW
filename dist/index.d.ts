@@ -66,6 +66,9 @@ export declare class JCLAW {
   private setCookies;
   private getSessionInfo;
   private setupWizard;
+  private getDependencyStatus;
+  private resolveConflicts;
+  private syncGhSessions;
   private getActiveTasks;
   cleanup(): Promise<void>;
   run(): Promise<void>;

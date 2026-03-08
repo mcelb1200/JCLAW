@@ -1,0 +1,2 @@
+description = "Sync JCLAW session metadata from GitHub PR to your local machine."
+prompt = "Use the jules_sync_gh_sessions tool to discover and map remote Jules sessions for the branch. Argument: {{args}}"

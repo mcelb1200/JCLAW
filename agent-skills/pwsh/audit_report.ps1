@@ -18,7 +18,33 @@ if (-not $SessionResp -or $SessionResp.error) {
 $Title = $SessionResp.title
 $State = $SessionResp.state
 $Source = if ($SessionResp.sourceContext -and $SessionResp.sourceContext.source) { $SessionResp.sourceContext.source } else { "Unknown" }
+$Branch = if ($SessionResp.sourceContext -and $SessionResp.sourceContext.githubRepoContext) { $SessionResp.sourceContext.githubRepoContext.startingBranch } else { "Unknown" }
 $Prompt = if ($SessionResp.prompt) { $SessionResp.prompt } else { "No initial prompt record available." }
+
+# 2. CI Telemetry (Artifact retrieval)
+$Telemetry = "*No branch information available.*"
+if ($Branch -and $Branch -ne "Unknown") {
+    if (Get-Command gh -ErrorAction SilentlyContinue) {
+        $RunListJson = gh run list --branch $Branch --limit 1 --json databaseId,status,conclusion,name
+        $Runs = $RunListJson | ConvertFrom-Json
+        if ($Runs -and $Runs.Count -gt 0) {
+            $Run = $Runs[0]
+            $Telemetry = "**Latest CI Run:** $($Run.name) (ID: $($Run.databaseId))`n**Status:** $($Run.status)`n**Conclusion:** $($Run.conclusion)"
+            if ($Run.conclusion -eq "failure") {
+                try {
+                    $Logs = gh run view $Run.databaseId.ToString() --log-failed | Select-Object -Last 20
+                    $Telemetry = "$Telemetry`n`n**Failed Logs (Tail):**`n\`\`\`n$($Logs -join "`n")`n\`\`\`"
+                } catch {
+                    $Telemetry = "$Telemetry`n`n*(Could not fetch failed logs)*"
+                }
+            }
+        } else {
+            $Telemetry = "*No GitHub Actions runs found for branch \`$Branch\`.*"
+        }
+    } else {
+        $Telemetry = "*gh CLI not found. CI telemetry skipped.*"
+    }
+}
 
 $ActivitiesResp = Invoke-ApiCall -Method "GET" -Endpoint "/$TaskId/activities?pageSize=50"
 
@@ -29,7 +55,9 @@ Write-Host "**Session ID**: `$TaskId`"
 Write-Host "**Title**: $Title"
 Write-Host "**Final State**: `$State`"
 Write-Host "**Repository**: $Source"
+Write-Host "**Branch**: $Branch"
 Write-Host "**Generated At**: $(Get-Date)`n"
+Write-Host "## 📊 CI Telemetry`n$Telemetry`n"
 Write-Host "## 📝 Intent Statement (Initial Prompt)`n> $Prompt`n"
 Write-Host "## 🔄 Delivery Activity Log`n| Timestamp | Event Type | Details |`n| :--- | :--- | :--- |"
 

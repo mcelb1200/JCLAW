@@ -82,6 +82,7 @@ interface JulesTask {
   status: 'pending' | 'in_progress' | 'completed' | 'paused';
   type: 'standard' | 'delegated';
   marker?: string;
+  dependsOn?: string[];
   createdAt: string;
   updatedAt: string;
   url: string;
@@ -301,6 +302,12 @@ export class JCLAW {
                   type: 'string',
                   description: 'Marker string to look for in code (default: @jules)',
                 },
+                dependsOn: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description:
+                    'List of taskIds this task depends on. Delegation is blocked until these are complete.',
+                },
                 pushFirst: {
                   type: 'boolean',
                   description:
@@ -367,6 +374,35 @@ export class JCLAW {
                 },
               },
               required: ['taskId', 'status'],
+            },
+          },
+          {
+            name: 'jules_dependency_status',
+            description: 'Scans task files and APIs to build and visualize a task dependency tree.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                dummy: { type: 'string' },
+              },
+            },
+          },
+          {
+            name: 'jules_resolve_conflicts',
+            description:
+              'Automated Merge Conflict Resolution Engine. Attempts a local git merge and if conflicts exist, isolates them into a new active task for Jules.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                sourceBranch: {
+                  type: 'string',
+                  description: 'The branch to merge from (e.g. feature-branch).',
+                },
+                targetBranch: {
+                  type: 'string',
+                  description: 'The branch to merge into (defaults to main).',
+                },
+              },
+              required: ['sourceBranch'],
             },
           },
           {
@@ -513,6 +549,24 @@ export class JCLAW {
             },
           },
           {
+            name: 'jules_sync_gh_sessions',
+            description:
+              'Discovers JCLAW sessions from GitHub PR metadata and populates the local environment.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                repository: {
+                  type: 'string',
+                  description: 'GitHub repository (owner/repo). Auto-detected if omitted.',
+                },
+                branch: {
+                  type: 'string',
+                  description: 'Git branch. Auto-detected if omitted.',
+                },
+              },
+            },
+          },
+          {
             name: 'jules_cli',
             description: 'Execute a command using the Jules CLI for token efficiency',
             inputSchema: {
@@ -570,6 +624,12 @@ export class JCLAW {
             return await this.generateAuditReport(args);
           case 'jules_conclude_task':
             return await this.concludeTask(args);
+          case 'jules_dependency_status':
+            return await this.getDependencyStatus(args);
+          case 'jules_resolve_conflicts':
+            return await this.resolveConflicts(args);
+          case 'jules_sync_gh_sessions':
+            return await this.syncGhSessions(args);
           case 'jules_code_review':
             return await this.getCodeReview(args);
           case 'jules_delegate_task':
@@ -612,49 +672,49 @@ export class JCLAW {
       return {
         resources: [
           {
-            uri: 'jules://schemas/task',
+            uri: 'jclaw://schemas/task',
             name: 'Task Schema',
             description: 'Complete task model with all available attributes',
             mimeType: 'application/json',
           },
           {
-            uri: 'jules://current/active-tasks',
+            uri: 'jclaw://current/active-tasks',
             name: 'Active Tasks',
             description: 'Live list of active tasks in Jules',
             mimeType: 'application/json',
           },
           {
-            uri: 'jules://templates/common-tasks',
+            uri: 'jclaw://templates/common-tasks',
             name: 'Common Task Templates',
             description: 'Template examples for common development tasks',
             mimeType: 'application/json',
           },
           {
-            uri: 'jules://prompts/session-setup',
+            uri: 'jclaw://prompts/session-setup',
             name: 'Session Setup Automation',
             description: 'Step-by-step prompts for automated Google authentication setup',
             mimeType: 'text/plain',
           },
           {
-            uri: 'jules://prompts/cookie-extraction',
+            uri: 'jclaw://prompts/cookie-extraction',
             name: 'Cookie Extraction Guide',
             description: 'Automated prompts for extracting Google authentication cookies',
             mimeType: 'text/plain',
           },
           {
-            uri: 'jules://prompts/browserbase-setup',
+            uri: 'jclaw://prompts/browserbase-setup',
             name: 'Browserbase Configuration',
             description: 'Automated Browserbase setup for remote browser sessions',
             mimeType: 'text/plain',
           },
           {
-            uri: 'jules://guides/session-modes',
+            uri: 'jclaw://guides/session-modes',
             name: 'Session Mode Selection Guide',
             description: 'Intelligent guide for choosing the optimal session management mode',
             mimeType: 'text/plain',
           },
           {
-            uri: 'jules://troubleshooting/authentication',
+            uri: 'jclaw://troubleshooting/authentication',
             name: 'Authentication Troubleshooting',
             description: 'Automated diagnostics and fixes for authentication issues',
             mimeType: 'text/plain',
@@ -667,7 +727,7 @@ export class JCLAW {
       const uri = request.params.uri;
 
       switch (uri) {
-        case 'jules://schemas/task':
+        case 'jclaw://schemas/task':
           return {
             contents: [
               {
@@ -693,7 +753,7 @@ export class JCLAW {
               },
             ],
           };
-        case 'jules://current/active-tasks':
+        case 'jclaw://current/active-tasks':
           const activeTasks = await this.getActiveTasks();
           return {
             contents: [
@@ -704,7 +764,7 @@ export class JCLAW {
               },
             ],
           };
-        case 'jules://templates/common-tasks':
+        case 'jclaw://templates/common-tasks':
           return {
             contents: [
               {
@@ -735,7 +795,7 @@ export class JCLAW {
               },
             ],
           };
-        case 'jules://prompts/session-setup':
+        case 'jclaw://prompts/session-setup':
           return {
             contents: [
               {
@@ -774,17 +834,17 @@ Based on their answers, recommend:
 ### STEP 3: Execute Setup Based on Mode
 
 If BROWSERBASE:
-1. Read jules://prompts/browserbase-setup for detailed instructions
+1. Read jclaw://prompts/browserbase-setup for detailed instructions
 2. Help configure API keys and project settings
 3. Test connection
 
 If CHROME-PROFILE:
-1. Read jules://guides/session-modes for profile detection
+1. Read jclaw://guides/session-modes for profile detection
 2. Help locate Chrome user data directory
 3. Configure environment variables
 
 If COOKIES:
-1. Read jules://prompts/cookie-extraction for step-by-step extraction
+1. Read jclaw://prompts/cookie-extraction for step-by-step extraction
 2. Help format cookies for environment variables
 3. Test authentication
 
@@ -804,7 +864,7 @@ Remember: Be proactive and guide the user through each step. Don't just provide 
               },
             ],
           };
-        case 'jules://prompts/cookie-extraction':
+        case 'jclaw://prompts/cookie-extraction':
           return {
             contents: [
               {
@@ -876,7 +936,7 @@ If possible, automate this by:
               },
             ],
           };
-        case 'jules://prompts/browserbase-setup':
+        case 'jclaw://prompts/browserbase-setup':
           return {
             contents: [
               {
@@ -962,7 +1022,7 @@ This approach completely eliminates local browser dependency!`,
               },
             ],
           };
-        case 'jules://guides/session-modes':
+        case 'jclaw://guides/session-modes':
           return {
             contents: [
               {
@@ -979,7 +1039,7 @@ Use this guide to automatically determine the best session mode for each user:
 **User Says: "I want to deploy on Smithery/cloud"**
 → **RECOMMEND: browserbase**
 → REASON: Remote browsers, no local dependencies
-→ NEXT: Read jules://prompts/browserbase-setup
+→ NEXT: Read jclaw://prompts/browserbase-setup
 
 **User Says: "I'm developing locally" + "I use Chrome for Google services"**
 → **RECOMMEND: chrome-profile**
@@ -989,7 +1049,7 @@ Use this guide to automatically determine the best session mode for each user:
 **User Says: "I need this to work on multiple machines"**
 → **RECOMMEND: cookies**
 → REASON: Portable authentication via environment variables
-→ NEXT: Read jules://prompts/cookie-extraction
+→ NEXT: Read jclaw://prompts/cookie-extraction
 
 **User Says: "I want maximum reliability and control"**
 → **RECOMMEND: persistent**
@@ -1067,7 +1127,7 @@ After configuration, always verify:
               },
             ],
           };
-        case 'jules://troubleshooting/authentication':
+        case 'jclaw://troubleshooting/authentication':
           return {
             contents: [
               {
@@ -1634,6 +1694,7 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       branch,
       taskId,
       marker = '@jules',
+      dependsOn = [],
       pushFirst = true,
       instruction,
       instructionFile,
@@ -1654,6 +1715,33 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
 
     const results = [];
     let activeTaskId = taskId || branch || 'default';
+
+    // Pre-flight Check: Dependency Verification
+    if (dependsOn && dependsOn.length > 0) {
+      const archiveDir = path.resolve(process.cwd(), '.jules/archive');
+      const unmet = [];
+      for (const dep of dependsOn) {
+        // Simple check: is the dependency archived?
+        const isArchived = await fs
+          .access(path.join(archiveDir, `${dep}.md`))
+          .then(() => true)
+          .catch(() => false);
+        if (!isArchived) {
+          unmet.push(dep);
+        }
+      }
+      if (unmet.length > 0) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `⚠ Dependency Check Failed: Task '${activeTaskId}' depends on [${unmet.join(', ')}], which are not completed yet. Delegation deferred.`,
+            },
+          ],
+        };
+      }
+      results.push(`✓ Dependencies met: [${dependsOn.join(', ')}]`);
+    }
 
     // Step 1: Deduplication Check (Prevent Redundant Tasks)
     if (this.config.julesApiKey) {
@@ -2903,6 +2991,49 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
       // 5. Identify Most Recent Code Review
       const reviewText = this.extractCodeReviewFromActivities(activities);
 
+      // 5.5 Extract Telemetry and Artifact Status
+      let telemetryReport = '';
+      const branch = session.sourceContext?.githubRepoContext?.startingBranch;
+      if (branch) {
+        try {
+          const runListJson = await this.runGhCommand([
+            'run',
+            'list',
+            '--branch',
+            branch,
+            '--limit',
+            '1',
+            '--json',
+            'databaseId,status,conclusion,name',
+          ]);
+          const runs = JSON.parse(runListJson);
+          if (runs && runs.length > 0) {
+            const run = runs[0];
+            telemetryReport = `**Latest CI Run**: ${run.name} (ID: ${run.databaseId})\n**Status**: ${run.status}\n**Conclusion**: ${run.conclusion || 'N/A'}`;
+            if (run.conclusion === 'failure') {
+              try {
+                const logs = await this.runGhCommand([
+                  'run',
+                  'view',
+                  run.databaseId.toString(),
+                  '--log-failed',
+                ]);
+                // Truncate logs if too long
+                const truncatedLogs =
+                  logs.length > 1000 ? logs.substring(logs.length - 1000) : logs;
+                telemetryReport += `\n\n**Failed Logs (Tail)**:\n\`\`\`\n${truncatedLogs}\n\`\`\``;
+              } catch (e) {
+                telemetryReport += `\n*(Could not fetch failed logs)*`;
+              }
+            }
+          } else {
+            telemetryReport = `*No GitHub Actions CI runs found for branch \`${branch}\`.*`;
+          }
+        } catch (e) {
+          telemetryReport = `*Failed to fetch CI telemetry: gh CLI not available or not authenticated.*`;
+        }
+      }
+
       // 6. Construct Markdown Report
       const report = [
         `# 🛡️ Jules Session Audit Report`,
@@ -2918,6 +3049,9 @@ Remember: Always start with \`jules_session_info\` and \`jules_screenshot\` to u
         ...(reviewText
           ? [`## 🔍 Most Recent Code Review`, `> ${reviewText.replace(/\n/g, '\n> ')}`, ``]
           : []),
+        `## 📊 CI Telemetry`,
+        telemetryReport || `*No branch information available to fetch telemetry.*`,
+        ``,
         `## 🔄 Delivery Activity Log`,
         `| Timestamp | Event Type | Details |`,
         `| :--- | :--- | :--- |`,
@@ -3329,7 +3463,7 @@ In the deepest trenches of technical debt, the Crimson Orchestrator (JCLAW) uses
 *Welcome to the Abyss. The Pincer is ready.*`;
 
       nextSteps = [
-        'Read jules://prompts/browserbase-setup for detailed setup',
+        'Read jclaw://prompts/browserbase-setup for detailed setup',
         'Use jules_session_info to verify configuration',
         'Test with jules_screenshot to see remote browser',
         'Create first task with jules_create_task',
@@ -3355,7 +3489,7 @@ CHROME_USER_DATA_DIR=/Users/[username]/Library/Application Support/Google/Chrome
 \`find ~/Library/Application\\ Support/Google/Chrome -name "Default" -type d 2>/dev/null\``;
 
       nextSteps = [
-        'Read jules://guides/session-modes for profile path detection',
+        'Read jclaw://guides/session-modes for profile path detection',
         'Set CHROME_USER_DATA_DIR environment variable',
         'Use jules_session_info to verify configuration',
         'Test with jules_create_task to confirm authentication',
@@ -3379,7 +3513,7 @@ COOKIES_PATH=~/.jclaw/cookies.json
 \`\`\``;
 
       nextSteps = [
-        'Read jules://prompts/cookie-extraction for step-by-step extraction',
+        'Read jclaw://prompts/cookie-extraction for step-by-step extraction',
         'Use jules_get_cookies to extract your current session',
         'Format cookies for GOOGLE_AUTH_COOKIES environment variable',
         'Test with jules_set_cookies and jules_session_info',
@@ -3428,8 +3562,8 @@ ${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
 - \`jules_create_task\` - Test end-to-end functionality
 
 ## Need Help?
-- Read jules://prompts/session-setup for comprehensive automation guide
-- Read jules://troubleshooting/authentication for common issues
+- Read jclaw://prompts/session-setup for comprehensive automation guide
+- Read jclaw://troubleshooting/authentication for common issues
 - Use jules_setup_wizard again with different preferences to see alternatives
 
 **Current Configuration Status:**
@@ -3443,6 +3577,231 @@ ${nextSteps.map((step, index) => `${index + 1}. ${step}`).join('\\n')}
         {
           type: 'text',
           text: wizardResponse,
+        },
+      ],
+    };
+  }
+
+  private async getDependencyStatus(args: any) {
+    const activeDir = path.resolve(process.cwd(), '.jules/active');
+    const backlogDir = path.resolve(process.cwd(), '.jules/backlog');
+    const archiveDir = path.resolve(process.cwd(), '.jules/archive');
+
+    const tasks: any[] = [];
+    const dirs = [
+      { path: activeDir, status: 'active' },
+      { path: backlogDir, status: 'backlog' },
+      { path: archiveDir, status: 'archived' },
+    ];
+
+    for (const dir of dirs) {
+      try {
+        const files = await fs.readdir(dir.path);
+        for (const file of files) {
+          if (file.endsWith('.md')) {
+            tasks.push({ id: file.replace('.md', ''), status: dir.status });
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (tasks.length === 0) {
+      return { content: [{ type: 'text', text: 'No Jules tasks found in local directories.' }] };
+    }
+
+    const report = tasks.map((t) => `- **${t.id}** [${t.status}]`).join('\n');
+    return { content: [{ type: 'text', text: `## Dependency Status\n\n${report}` }] };
+  }
+
+  private async resolveConflicts(args: any) {
+    const { sourceBranch, targetBranch = 'main' } = args;
+    if (!sourceBranch) {
+      throw new Error('sourceBranch is required for resolveConflicts.');
+    }
+
+    const results = [];
+    try {
+      // Step 1: Ensure we are on target branch and up to date
+      await this.runGitCommand(['checkout', targetBranch]);
+      await this.runGitCommand(['pull', 'origin', targetBranch]).catch(() => {
+        /* ignore */
+      });
+
+      // Step 2: Attempt merge
+      try {
+        await this.runGitCommand(['merge', sourceBranch, '--no-commit', '--no-ff']);
+        // If it succeeds without error, there are no conflicts.
+        await this.runGitCommand(['merge', '--abort']).catch(() => {
+          /* ignore */
+        });
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `No conflicts detected between ${sourceBranch} and ${targetBranch}. Safe to merge.`,
+            },
+          ],
+        };
+      } catch (mergeError: any) {
+        // Step 3: Conflicts detected, extract paths
+        const statusOut = await this.runGitCommand(['status', '--porcelain']);
+        const unmergedPaths = statusOut
+          .split('\n')
+          .filter(
+            (line) => line.startsWith('UU ') || line.startsWith('U ') || line.startsWith(' U')
+          )
+          .map((line) => line.substring(3).trim());
+
+        if (unmergedPaths.length === 0) {
+          await this.runGitCommand(['merge', '--abort']).catch(() => {
+            /* ignore */
+          });
+          throw new Error('Merge failed but could not parse unmerged paths.');
+        }
+
+        results.push(`⚠ Conflicts detected in: ${unmergedPaths.join(', ')}`);
+
+        // Step 4: Create a conflict resolution task
+        const activeDir = path.resolve(process.cwd(), '.jules/active');
+        await fs.mkdir(activeDir, { recursive: true });
+
+        const taskName = `resolve-conflicts-${sourceBranch.replace(/\//g, '-')}`;
+        const taskPath = path.join(activeDir, `${taskName}.md`);
+
+        const taskContent = `## Task: ${taskName}
+**BASE_COMMIT:** ${targetBranch}
+**SCOPED_FILES:** ${unmergedPaths.join(', ')}
+
+### Objective
+Resolve merge conflicts between \`${sourceBranch}\` and \`${targetBranch}\`.
+The following files contain standard git conflict markers (<<<<<<<, =======, >>>>>>>).
+
+Please inspect these files, resolve the conflicts logically ensuring the intent of both branches is preserved, remove the markers, and commit the resolution.
+
+### Files to Fix:
+${unmergedPaths.map((p) => `- ${p}`).join('\n')}
+`;
+        await fs.writeFile(taskPath, taskContent, 'utf8');
+        results.push(`✓ Created conflict resolution task: .jules/active/${taskName}.md`);
+
+        // Abort merge so the workspace is clean for Jules to take over if delegated,
+        // OR we can leave it unmerged. Leaving it aborted is safer for Jules since it expects a clean branch to checkout from.
+        await this.runGitCommand(['merge', '--abort']).catch(() => {
+          /* ignore */
+        });
+        results.push(
+          `ℹ Aborted local merge. You can now delegate the resolution task to Jules: \`/jclaw.delegate ${taskName}\``
+        );
+      }
+    } catch (e: any) {
+      throw new Error(`Conflict Resolution Engine Error: ${e.message}`);
+    }
+
+    return {
+      content: [{ type: 'text', text: `## Merge Conflict Resolution\n\n${results.join('\n')}` }],
+    };
+  }
+
+  private async syncGhSessions(args: any) {
+    let { repository, branch } = args;
+
+    // Auto-detect context if missing
+    if (!repository || !branch) {
+      const detected = await this.detectGitContext();
+      repository = repository || detected.repository;
+      branch = branch || detected.branch;
+    }
+
+    if (!repository) {
+      throw new Error('Repository must be provided or auto-detectable.');
+    }
+
+    const results = [];
+    try {
+      // 1. Find PR for branch
+      const prListJson = await this.runGhCommand([
+        'pr',
+        'list',
+        '--head',
+        branch || '',
+        '--repo',
+        repository,
+        '--json',
+        'number',
+        '--jq',
+        '.[0]',
+      ]);
+
+      if (!prListJson || prListJson === 'null') {
+        return {
+          content: [{ type: 'text', text: `No PR found for branch '${branch}' in ${repository}.` }],
+        };
+      }
+
+      const pr = JSON.parse(prListJson);
+      const prNum = pr.number;
+
+      // 2. Fetch comments and find metadata
+      const commentsJson = await this.runGhCommand([
+        'pr',
+        'view',
+        prNum.toString(),
+        '--repo',
+        repository,
+        '--json',
+        'comments',
+        '--jq',
+        '.comments[].body',
+      ]);
+
+      const sessions: any[] = [];
+      const lines = commentsJson.split('\n');
+      for (const line of lines) {
+        const match = line.match(/<!-- JCLAW_SESSION: (.*) } -->/);
+        if (match) {
+          try {
+            sessions.push(JSON.parse(match[1] + ' }'));
+          } catch (e) {}
+        }
+      }
+
+      if (sessions.length === 0) {
+        return {
+          content: [
+            { type: 'text', text: `No JCLAW session metadata found in PR #${prNum} comments.` },
+          ],
+        };
+      }
+
+      // 3. Populate local tiers
+      const activeDir = path.resolve(process.cwd(), '.jules/active');
+      await fs.mkdir(activeDir, { recursive: true });
+
+      for (const session of sessions) {
+        const { taskId, sessionId } = session;
+        const file = path.join(activeDir, `${taskId}.md`);
+        const exists = await fs
+          .access(file)
+          .then(() => true)
+          .catch(() => false);
+
+        if (!exists) {
+          const content = `## Remote JCLAW Session\nDiscovered via GitHub PR sync.\n\n**Session ID**: ${sessionId}\n**Task ID**: ${taskId}\n**Sync Time**: ${new Date().toLocaleString()}\n\n*Note: This file was automatically generated to restore cross-machine session state.*`;
+          await fs.writeFile(file, content, 'utf8');
+          results.push(`Discovered and mapped session: ${taskId} (${sessionId})`);
+        } else {
+          results.push(`Session ${taskId} already exists locally.`);
+        }
+      }
+    } catch (e: any) {
+      throw new Error(`GitHub Sync Error: ${e.message}`);
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `## JCLAW GitHub Persistence Sync\n\n${results.join('\n') || 'No new sessions discovered.'}`,
         },
       ],
     };

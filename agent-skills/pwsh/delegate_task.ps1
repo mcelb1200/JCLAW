@@ -4,13 +4,26 @@ param(
     [string]$TaskId,
     [string]$Prompt,
     [bool]$PushFirst=$true,
-    [string]$Marker="@jules"
+    [string]$Marker="@jules",
+    [string]$DependsOn # Comma-separated list of task IDs
 )
 
 $Dir = Split-Path $MyInvocation.MyCommand.Path
 . "$Dir\common.ps1"
 
 Write-Host "=== Delegating Task ===" -ForegroundColor Cyan
+
+# Pre-flight check: Dependencies
+if ($DependsOn) {
+    Write-Host "ℹ Checking dependencies: $DependsOn" -ForegroundColor Cyan
+    $Deps = $DependsOn -split "," | ForEach-Object { $_.Trim() }
+    $Unmet = $Deps | Where-Object { -not (Test-Path ".jules/archive/$_.md") }
+    if ($Unmet) {
+        Write-Error "Dependency check failed for: $($Unmet -join ', '). Delegation deferred."
+        exit 1
+    }
+    Write-Host "✓ All dependencies met." -ForegroundColor Green
+}
 
 if ($PushFirst) {
     Write-Host "Pushing branch $Branch to origin..." -ForegroundColor Yellow

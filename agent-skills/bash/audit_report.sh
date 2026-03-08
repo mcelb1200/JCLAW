@@ -28,10 +28,33 @@ BRANCH=$(echo "$SESSION_DATA" | jq -r '.sourceContext.githubRepoContext.starting
 REPO=$(echo "$SESSION_DATA" | jq -r '.sourceContext.source | sub("sources/github/"; "")')
 CREATE_TIME=$(echo "$SESSION_DATA" | jq -r '.createTime')
 
-# 2. Get GitHub Context
+# 2. CI Telemetry (Artifact retrieval)
+TELEMETRY="*No branch information available.*"
+if [ "$BRANCH" != "null" ]; then
+    if command -v gh >/dev/null 2>&1; then
+        RUN=$(gh run list --branch "$BRANCH" --limit 1 --json databaseId,status,conclusion,name | jq -r '.[0]')
+        if [ "$RUN" != "null" ]; then
+            ID=$(echo "$RUN" | jq -r '.databaseId')
+            STATUS=$(echo "$RUN" | jq -r '.status')
+            CONCLUSION=$(echo "$RUN" | jq -r '.conclusion')
+            NAME=$(echo "$RUN" | jq -r '.name')
+            TELEMETRY="**Latest CI Run:** $NAME (ID: $ID)\n**Status:** $STATUS\n**Conclusion:** $CONCLUSION"
+            if [ "$CONCLUSION" = "failure" ]; then
+                LOGS=$(gh run view "$ID" --log-failed | tail -n 20)
+                TELEMETRY="$TELEMETRY\n\n**Failed Logs (Tail):**\n\`\`\`\n$LOGS\n\`\`\`"
+            fi
+        else
+            TELEMETRY="*No GitHub Actions runs found for branch \`$BRANCH\`.*"
+        fi
+    else
+        TELEMETRY="*gh CLI not found. CI telemetry skipped.*"
+    fi
+fi
+
+# 3. Get GitHub Context
 PR_LINK=$(get_session_pr_link "$BRANCH" "$REPO")
 
-# 3. Build Report
+# 4. Build Report
 cat <<EOF > "$REPORT_FILE"
 # 🦞 JCLAW Session Audit Report: $TASK_ID
 **Title:** $TITLE  
@@ -40,6 +63,11 @@ cat <<EOF > "$REPORT_FILE"
 **Repository:** $REPO  
 **Branch:** $BRANCH  
 **GitHub Link:** $PR_LINK
+
+---
+
+## 📊 CI Telemetry
+$TELEMETRY
 
 ---
 

@@ -1,0 +1,2 @@
+description = "Automated Merge Conflict Resolution Engine. Scaffold a conflict task for Jules."
+prompt = "Use the jules_resolve_conflicts tool for the specified sourceBranch. Argument: {{args}}"

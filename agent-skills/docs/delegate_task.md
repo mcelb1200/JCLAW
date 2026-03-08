@@ -2,13 +2,14 @@
 
 **Usage:**
 ```bash
-./delegate_task.sh [repository] [branch] [taskId] [prompt] [pushFirst (true|false)] [marker]
+./delegate_task.sh [repository] [branch] [taskId] [prompt] [pushFirst (true|false)] [marker] [dependsOn]
 ```
 
 **Description:**
 The most efficient way to initiate a delegated task. This script will push the current branch to origin (optional), and trigger a Jules task using the provided prompt, marker, or instruction file. It bypasses complex MCP checks in favor of a direct, long-running REST API call to `https://jules.googleapis.com/v1alpha/sessions`.
 
 **Behavior:**
+- **Dependency Tracking**: If `dependsOn` (comma-separated list of task IDs) is provided, the script verifies that all listed tasks are present in `.jules/archive/` before proceeding. If any are missing, delegation is deferred to prevent race conditions in parallel workflows.
 - Pushes the branch if `pushFirst` is true.
 - Resolves the prompt by checking provided text, an instruction file, or falling back to a `@jules` marker in the codebase.
 - Creates a new session in Jules for the given `repository` and `branch`.

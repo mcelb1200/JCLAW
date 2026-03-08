@@ -8,20 +8,23 @@ JCLAW promotes the **Lobster Pattern** where YOU (the agent) provide the brain a
 
 ### 🧠 Brain / 🦞 Muscles Workflow:
 1. **Context/Instruction**: You define what needs to be done.
-2. **Delegation**: Use `/jules:delegate` to trigger a remote Jules task.
+2. **Delegation**: Use `/jclaw.delegate` to trigger a remote Jules task.
 3. **Execution**: Jules completes the task autonomously on a remote branch.
-4. **Audit/Merge**: You audit the results using `/jules:audit` and merge if successful.
+4. **Audit/Merge**: You audit the results using `/jclaw.audit` and merge if successful.
 
 ## 🛠️ Commands
 
 You can use the following slash commands within the Gemini CLI:
 
-- `/jules:delegate [instruction]` - Delegate a task to Jules using instructions from `@jules` markers or `.jules/active/` files.
-- `/jules:status` - List currently active Jules tasks and their progress.
-- `/jules:audit [taskId]` - Generate a comprehensive audit report for a completed session.
-- `/jules:review [taskId]` - Extract the most recent code review reasoning from a Jules session.
-- `/jules:feedback` - Check if any Jules tasks are awaiting user feedback.
-- `/jules:conclude [taskId] [status]` - Finalize a Jules session (status: `completed` or `incomplete`).
+- `/jclaw.delegate [instruction]` - Delegate a task to Jules using instructions from `@jules` markers or `.jules/active/` files.
+- `/jclaw.status` - List currently active Jules tasks and their progress.
+- `/jclaw.audit [taskId]` - Generate a comprehensive audit report with CI telemetry integration.
+- `/jclaw.review [taskId]` - Extract the most recent code review reasoning from a Jules session.
+- `/jclaw.feedback` - Check if any Jules tasks are awaiting user feedback.
+- `/jclaw.conclude [taskId] [status]` - Finalize a Jules session (status: `completed` or `incomplete`).
+- `/jclaw.dependency` - Visualize task status and dependency tracking across tiers.
+- `/jclaw.resolve [sourceBranch]` - Scaffold a conflict resolution task for Jules when branches diverge.
+- `/jclaw.sync` - Discover and sync JCLAW session metadata from GitHub PRs across the team.
 
 ## ⚙️ Configuration
 
