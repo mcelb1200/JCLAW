@@ -24,6 +24,7 @@ These scripts are designed for token-efficient, long-running orchestration by an
 - [**Audit Report**](audit_report.md): Generate a formal audit report for a session.
 - [**Conclude Task**](conclude_task.md): Finalize a session (completed or incomplete) and archive instructions.
 - [**Code Review**](code_review.md): Extract the latest code review from a session's history.
+- [**Auto Review**](auto_review.md): Programmatically lint, auto-fix, and send code quality feedback to a session.
 
 ### Tier 3: Advanced Utility
 *Scripts for specific, complex scenarios or bulk operations.*
