@@ -94,6 +94,44 @@ npm run build
 npm test
 ```
 
+## 🚀 Alternative: Agent Skills (CLI Tools)
+
+If you prefer not to configure a full MCP server, JCLAW provides a comprehensive suite of **Agent Skills** (Bash and PowerShell scripts) that interact directly with the Jules API and CLI. These are ideal for:
+- **Token Efficiency**: Bypassing the MCP overhead for long-running tasks.
+- **Direct Integration**: Using JCLAW in CI/CD pipelines or custom automation scripts.
+- **Zero Overhead**: Running specific tasks without keeping an MCP server active.
+
+See the [Agent Skills Documentation](agent-skills/README.md) for full details and usage instructions.
+
+## 🐳 Docker Support
+
+JCLAW can be run entirely within a Docker container to ensure a consistent environment and avoid local dependency issues.
+
+### 1. Build the Image
+```bash
+docker build -t jclaw:latest .
+```
+
+### 2. Run the Container
+We provide helper scripts that automatically mount your current directory to the container's `/projects` workspace:
+
+**macOS/Linux:**
+```bash
+chmod +x scripts/run_docker.sh
+./scripts/run_docker.sh "$(pwd)"
+```
+
+**Windows:**
+```powershell
+.\scripts\run_docker.ps1 -WorkspacePath (Get-Location)
+```
+
+For more advanced Docker configurations (including IDE integration for Claude Desktop), see [README_DOCKER.md](README_DOCKER.md).
+
+> [!TIP]
+> **AI Agents & LLMs**: If you are an agent context-provisioning this repository, refer to the [AI Agent Setup Guide (AGENT_INSTALL.md)](AGENT_INSTALL.md) for optimized installation and workflow instructions.
+
+
 ## 🔐 Session Management & Authentication
 
 ### Session Modes

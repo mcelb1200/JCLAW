@@ -9,19 +9,48 @@ This guide is designed for an AI agent (like Antigravity, Claude, or Cursor) to 
 Run these commands to clone, build, and prepare the server:
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/mcelb1200/JCLAW.git
 cd JCLAW
 
-# 2. Install dependencies
+# Install dependencies
 npm install
 
-# 3. Build the project
+# Build the project
 npm run build
 
-# 4. Verify local Jules CLI (Optional but Recommended)
+# Verify local Jules CLI (Optional but Recommended)
 jules --version
 ```
+
+## 🐳 Option B: Docker Installation
+
+If you prefer a sandboxed environment, we provide a pre-configured Docker setup.
+
+```bash
+# 1. Build the image
+docker build -t jclaw:latest .
+
+# 2. Run with a mount to your project
+# (Use the provided helper script for automatic mounting)
+./scripts/run_docker.sh "$(pwd)"
+```
+
+For full details, see [README_DOCKER.md](README_DOCKER.md).
+
+## 🛠️ Option C: Agent Skills (Direct CLI)
+
+If you don't need a full MCP server, you can use the **Agent Skills** (Bash/PowerShell scripts) located in the `agent-skills/` directory. These allow an agent to trigger JCLAW actions directly from its terminal.
+
+```bash
+# Example: Delegate a task directly using bash scripts
+./agent-skills/bash/delegate_task.sh \
+    --instruction "Refactor the login logic" \
+    --taskId "feature-auth"
+```
+
+For more info, see the [Agent Skills Summary](agent-skills/README.md).
+
 
 ## ⚙️ Configuration (Environment Variables)
 
