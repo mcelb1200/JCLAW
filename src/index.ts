@@ -110,7 +110,7 @@ export class JCLAW {
   private jclawMessages: any = null;
 
   constructor() {
-    this.jclawMessages = jclawMessagesData;
+    this.jclawMessages = messages;
 
     this.config = {
       headless: process.env.HEADLESS !== 'false',
