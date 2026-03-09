@@ -99,7 +99,8 @@ BODY=$(cat <<EOF
     }
   },
   "title": $TITLE_JSON,
-  "requirePlanApproval": true
+  "requirePlanApproval": true,
+  "automationMode": "AUTO_CREATE_PR"
 }
 EOF
 )
