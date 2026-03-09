@@ -76,7 +76,8 @@ if [ "$PUSH_FIRST" = "true" ]; then
 fi
 
 # Inject ignores and DNA (Primary Shield)
-DNA_HEADER="### 🧬 Project DNA:\n- **Language**: C++17 (Strict MISRA compliance where requested)\n- **Build System**: PlatformIO\n- **Test Framework**: Google Test (GTest)\n- **Architecture**: Direct Interface Model (MidiProcessor based)\n\n"
+PROJECT_DNA=$(identify_project_dna)
+DNA_HEADER="### 🧬 Project DNA:\n$PROJECT_DNA\n"
 
 IGNORE_TEXT=""
 if [ -f ".jclaw-ignore" ]; then

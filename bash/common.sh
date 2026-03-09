@@ -49,6 +49,33 @@ extract_id() {
     echo "$input" | jq -r '.id // .name // . | split("/") | last'
 }
 
+# Dynamically identify project context (DNA)
+identify_project_dna() {
+    local dna=""
+    
+    # 1. PlatformIO / C++
+    if [ -f "platformio.ini" ]; then
+        local cpp_std=$(grep -A 10 "build_flags" platformio.ini | grep "std=" | head -n 1 | cut -d'=' -f2 | sed 's/gnu++//' | sed 's/c++//')
+        dna="- **Language**: C++${cpp_std:-17}\n- **Build System**: PlatformIO\n- **Test Framework**: Google Test (GTest)\n"
+    # 2. Rust
+    elif [ -f "Cargo.toml" ]; then
+        dna="- **Language**: Rust\n- **Build System**: Cargo\n"
+    # 3. Node.js / TS
+    elif [ -f "package.json" ]; then
+        dna="- **Language**: TypeScript/JavaScript\n- **Build System**: npm/yarn\n"
+    # 4. Python
+    elif [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+        dna="- **Language**: Python\n"
+    fi
+
+    # 5. Architecture specific (Project DNA file if exists)
+    if [ -f "DNA.md" ]; then
+        dna="$dna$(cat DNA.md)\n"
+    fi
+
+    echo -e "$dna"
+}
+
 # Push a file to a GitHub repository using the API (headless)
 gh_api_push_file() {
     local repo="$1"
